@@ -103,6 +103,10 @@ function App() {
 
       ctxRef.current = ctx;
 
+      // Set canvas background color
+      ctx.fillStyle = 'white'; // Set to the desired background color
+      ctx.fillRect(0, 0, areaWidth, areaHeight);
+
       // Draw black border
       ctx.strokeStyle = 'black';
       ctx.strokeRect(0, 0, areaWidth, areaHeight);
@@ -138,8 +142,8 @@ function App() {
   }, []);
 
   return (
-    <div className="App">
-      <canvas ref={canvasRef} className="canvas"></canvas>
+    <div className="App" style={{ backgroundColor: 'gray' }}>
+      <canvas ref={canvasRef} className="canvas" ></canvas>
     </div>
   );
 }
