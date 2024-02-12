@@ -1,0 +1,135 @@
+// Import required modules
+const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
+
+// Initialize express app and HTTP server
+const app = express();
+const server = http.createServer(app);
+
+// Graph dimensions constants
+const WIDTH = 1600;
+const HEIGHT = 900;
+const DIAGONAL = Math.sqrt(WIDTH ** 2 + HEIGHT ** 2);
+
+// Initialize socket.io with the HTTP server
+const io = new Server(server, {
+    cors: {
+        origin: "http://localhost:3000", // this should match your client's host and port
+        methods: ["GET", "POST"],
+        allowedHeaders: ["my-custom-header"],
+        credentials: true
+    }
+});
+
+// Set the port for the server to listen on
+const PORT = process.env.PORT || 3001;
+
+// Function to calculate the distance between two nodes
+function getDistance(nodeA, nodeB) {
+    return Math.hypot(nodeB.x - nodeA.x, nodeB.y - nodeA.y);
+}
+
+// Placeholder function for checking if paths overlap
+function doesPathOverlap(fromNode, toNode, existingEdges, nodes) {
+    return false;
+}
+
+// Function to generate a random graph
+function generateRandomGraph() {
+    const nodes = [];
+    const edges = [];
+    const numNodes = 50;
+    const minDistance = 100;
+
+    // Generate nodes with random positions ensuring minimum distance between them
+    for (let i = 1; i <= numNodes; i++) {
+        let newNode;
+        do {
+            newNode = {
+                id: i,
+                x: Math.random() * WIDTH,
+                y: Math.random() * HEIGHT,
+                size: 1,
+                owner: 'gray', // Initial owner set to 'gray'
+            };
+        } while (nodes.some((existingNode) => getDistance(newNode, existingNode) < minDistance));
+
+        nodes.push(newNode);
+    }
+
+    // Function to determine edge creation probability based on distance
+    const distanceFunction = (distance) => {
+        return Math.pow((DIAGONAL - distance) / DIAGONAL, 12);
+    };
+
+    // Generate edges based on distance function and probability
+    for (let i = 0; i < numNodes; i++) {
+        for (let j = i + 1; j < numNodes; j++) {
+            const distance = getDistance(nodes[i], nodes[j]);
+            const edgeProbability = distanceFunction(distance);
+
+            if (Math.random() < edgeProbability && !doesPathOverlap(nodes[i], nodes[j], edges, nodes)) {
+                edges.push({ from: nodes[i].id, to: nodes[j].id });
+            }
+        }
+    }
+
+    return { nodes, edges };
+}
+
+const storedGraphData = generateRandomGraph();
+const TICK_RATE = 1000 / 1; // 1 times per second
+
+// Function to update the game state
+function updateGameState() {
+    
+    if(storedGraphData && storedGraphData.nodes && storedGraphData.edges) {
+        // Here you can implement the logic that needs to happen every tick
+        // For example, you could adjust node positions, check for game events, etc.
+
+        // Emit the updated game state to all connected clients
+        io.emit('graphData', storedGraphData); // io.emit sends it to all clients
+        console.log('Emitting graphData', storedGraphData);
+    } else {
+        // Log for debugging purposes
+        console.log('storedGraphData is not complete, skipping emit');
+    }
+}
+
+// Start the game loop
+const gameLoopInterval = setInterval(updateGameState, TICK_RATE);
+
+
+// Handle WebSocket connections
+io.on('connection', (socket) => {
+    console.log('A user connected');
+    //can delete this function, its just for debugging
+    socket.on('error', (error) => {
+        console.error('Socket error:', error);
+    });
+    // Clear the interval on disconnection to prevent memory leaks
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+        clearInterval(gameLoopInterval);
+    });
+
+    socket.on('updateNodeOwner', ({ nodeId, newOwner }) => {
+        console.log('Node clicked on');
+        const node = storedGraphData.nodes.find(node => node.id === nodeId);
+        if (node) {
+            node.owner = newOwner;
+        }
+    });
+    
+});
+
+// Serve a simple HTTP response on the root route
+app.get('/', (req, res) => {
+    res.send('<h1>Hello from the WebSocket server!</h1>');
+});
+
+// Start the server
+server.listen(PORT, () => {
+    console.log(`Server listening on http://localhost:${PORT}`);
+});

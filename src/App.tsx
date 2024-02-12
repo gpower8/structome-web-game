@@ -1,14 +1,16 @@
-import React, { useEffect, useRef } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { io, Socket } from 'socket.io-client';
 import './App.css';
 
 const WIDTH = 1600;
 const HEIGHT = 900;
-const DIAGONAL = Math.floor(Math.sqrt(WIDTH**2 + HEIGHT**2))
 
 interface Node {
   id: number;
   x: number;
   y: number;
+  size: number;
+  owner: string;
 }
 
 interface Edge {
@@ -16,120 +18,113 @@ interface Edge {
   to: number;
 }
 
-const generateRandomGraph = (): { nodes: Node[]; edges: Edge[] } => {
-  const nodes: Node[] = [];
-  const edges: Edge[] = [];
-
-  // Number of nodes
-  const numNodes = 50;
-
-  // Minimum distance between nodes
-  const minDistance = 100;
-
-  // Base edge probability
-  const baseEdgeProbability = 0.5;
-
-  for (let i = 1; i <= numNodes; i++) {
-    let newNode: Node;
-    do {
-      newNode = {
-        id: i,
-        x: Math.random() * WIDTH, // Adjusted for the specified area width
-        y: Math.random() * HEIGHT, // Adjusted for the specified area height
-      };
-    } while (nodes.some((existingNode) => getDistance(newNode, existingNode) < minDistance));
-
-    nodes.push(newNode);
-  }
-
-  const distanceFunction = (distance: number): number => {
-    // Adjust this function as needed for your probability distribution
-    return Math.pow((DIAGONAL-distance)/DIAGONAL, 12)
-  };
-
-  for (let i = 0; i < numNodes; i++) {
-    for (let j = i + 1; j < numNodes; j++) {
-      const distance = getDistance(nodes[j], nodes[i]);
-
-      const edgeProbability = distanceFunction(distance);
-      console.log(i, edgeProbability);
-      if (Math.random() < edgeProbability && !doesPathOverlap(nodes[i], nodes[j], edges)) {
-        edges.push({ from: nodes[i].id, to: nodes[j].id });
-        
-      }
-    }
-  }
-  console.log(edges);
-  return { nodes, edges };
-};
-
-const getDistance = (nodeA: Node, nodeB: Node): number => {
-  return Math.hypot(nodeB.x - nodeA.x, nodeB.y - nodeA.y);
-};
-
-const doesPathOverlap = (fromNode: Node, toNode: Node, existingEdges: Edge[]): boolean => {
-  for (const edge of existingEdges) {
-    const edgeStart = fromNode.id === edge.from ? fromNode : toNode;
-    const edgeEnd = fromNode.id === edge.to ? fromNode : toNode;
-
-    if (doLineSegmentsOverlap(fromNode, toNode, edgeStart, edgeEnd)) {
-      return true;
-    }
-  }
-
-  return false;
-};
-
-const doLineSegmentsOverlap = (line1Start: Node, line1End: Node, line2Start: Node, line2End: Node): boolean => {
-  return false;
-};
-
-
 function App() {
+  const socketRef = useRef<Socket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const ctxRef = useRef<CanvasRenderingContext2D | null>(null);
+  const [graphData, setGraphData] = useState<{ nodes: Node[]; edges: Edge[] }>({ nodes: [], edges: [] });
+
+  useEffect(() => {
+    console.log('Socket initialized');
+    //if (!socketRef.current) {
+    socketRef.current = io('http://localhost:3001');
+    //}//makes it sort of global
+    const socket = socketRef.current;
+    socket.on('connect', () => console.log('Connected to the server.'));
+    //could probably remove the ones below this later if we dont need them from debugging
+    socket.on('connect_error', (err) => console.error('Connection Error:', err.message));
+    socket.on('connect_timeout', (timeout) => console.error('Connection Timeout:', timeout));
+    socket.on('error', (error) => console.error('Error:', error));
+    socket.on('disconnect', (reason) => console.error('Disconnected:', reason));
+
+    // Listen for graph data updates
+    socket.on('graphData', (data: { nodes: Node[]; edges: Edge[] }) => {
+      console.log('Graph data received:', data);
+      setGraphData(data);
+    });
+
+    // Clean up on component unmount
+    return () => {
+      console.log('Disconnecting socket');
+      socket.off('connect');
+      socket.off('connect_error');
+      socket.off('connect_timeout');
+      socket.off('error');
+      socket.off('disconnect');
+      socket.off('graphData');
+      socket.disconnect();
+    };
+  }, []);
+  //Mouse stuff
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (canvas) {
+      canvas.addEventListener('click', handleCanvasClick);
+
+      // Clean up
+      return () => {
+        canvas.removeEventListener('click', handleCanvasClick);
+      };
+    }
+  }, [graphData]);
+
+  const handleCanvasClick = (event: MouseEvent) => {
+    const rect = canvasRef.current?.getBoundingClientRect();
+    if (!rect) return; // Exit if rect is undefined
+
+    // Ensure we have non-null values for canvas dimensions; you might use fallback values or ensure they are defined
+    const canvasWidth = canvasRef.current?.width ?? 0;
+    const canvasHeight = canvasRef.current?.height ?? 0;
+
+    // Now that we have ensured canvasWidth and canvasHeight are numbers, TypeScript won't complain
+    const scaleX = canvasWidth / rect.width; // Use direct division since we checked rect is defined
+    const scaleY = canvasHeight / rect.height;
+
+    const x = (event.clientX - rect.left) * scaleX;
+    const y = (event.clientY - rect.top) * scaleY;
+
+    // Find if a node was clicked
+    const clickedNode = graphData.nodes.find(node => {
+      const distance = Math.sqrt((node.x - x) ** 2 + (node.y - y) ** 2);
+      return distance < 20; // 3 is distance from node that must be clicked
+    });
+
+    if (clickedNode) {
+      // Emit an event to the server to update the node owner if socketRef isnt null
+      socketRef.current!.emit('updateNodeOwner', { nodeId: clickedNode.id, newOwner: 'blue' });
+      console.log('Emitting Click')
+    }
+  };
+  
 
   useEffect(() => {
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
 
     if (canvas && ctx) {
-      const areaWidth = WIDTH;
-      const areaHeight = HEIGHT;
+      canvas.width = WIDTH;
+      canvas.height = HEIGHT;
 
-      // Set canvas size to the specified area dimensions
-      canvas.width = areaWidth;
-      canvas.height = areaHeight;
-
-      ctxRef.current = ctx;
-
-      // Set canvas background color
-      ctx.fillStyle = 'white'; // Set to the desired background color
-      ctx.fillRect(0, 0, areaWidth, areaHeight);
-
-      // Draw black border
+      ctx.fillStyle = 'white';
+      ctx.fillRect(0, 0, WIDTH, HEIGHT);
       ctx.strokeStyle = 'black';
-      ctx.strokeRect(0, 0, areaWidth, areaHeight);
-
-      const { nodes, edges } = generateRandomGraph();
+      ctx.strokeRect(0, 0, WIDTH, HEIGHT);
 
       // Draw nodes
-      nodes.forEach((node) => {
+      graphData.nodes.forEach((node) => {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, 10, 0, 2 * Math.PI); // Adjusted circle size
-        ctx.fillStyle = 'blue';
+        ctx.arc(node.x, node.y, 10, 0, 2 * Math.PI);
+        ctx.fillStyle = node.owner;
         ctx.fill();
         ctx.stroke();
         ctx.closePath();
       });
 
       // Draw edges
-      edges.forEach((edge) => {
-        const fromNode = nodes.find((node) => node.id === edge.from);
-        const toNode = nodes.find((node) => node.id === edge.to);
+      graphData.edges.forEach((edge) => {
+        const fromNode = graphData.nodes.find((node) => node.id === edge.from);
+        const toNode = graphData.nodes.find((node) => node.id === edge.to);
 
         if (fromNode && toNode) {
-          // Draw straight line
           ctx.beginPath();
           ctx.moveTo(fromNode.x, fromNode.y);
           ctx.lineTo(toNode.x, toNode.y);
@@ -139,11 +134,11 @@ function App() {
         }
       });
     }
-  }, []);
+  }, [graphData]);
 
   return (
     <div className="App" style={{ backgroundColor: 'gray' }}>
-      <canvas ref={canvasRef} className="canvas" ></canvas>
+      <canvas ref={canvasRef} className="canvas"></canvas>
     </div>
   );
 }
