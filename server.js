@@ -41,6 +41,7 @@ function generateRandomGraph() {
     const edges = [];
     const numNodes = 50;
     const minDistance = 100;
+    const money = [5, 5];//both players start with 5 points
 
     // Generate nodes with random positions ensuring minimum distance between them
     for (let i = 1; i <= numNodes; i++) {
@@ -75,7 +76,7 @@ function generateRandomGraph() {
         }
     }
 
-    return { nodes, edges };
+    return { nodes, edges, money };
 }
 
 const storedGraphData = generateRandomGraph();
@@ -85,8 +86,13 @@ const TICK_RATE = 1000 / 1; // 1 times per second
 function updateGameState() {
     
     if(storedGraphData && storedGraphData.nodes && storedGraphData.edges) {
-        // Here you can implement the logic that needs to happen every tick
-        // For example, you could adjust node positions, check for game events, etc.
+        //Grow nodes
+        storedGraphData.nodes.forEach(node => {
+            // Check if the node owner is not 'gray' and size is less than 30
+            if (node.owner !== 'gray' && node.size < 30) {
+                node.size++;
+            }
+        });
 
         // Emit the updated game state to all connected clients
         io.emit('graphData', storedGraphData); // io.emit sends it to all clients

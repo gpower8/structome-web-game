@@ -18,10 +18,16 @@ interface Edge {
   to: number;
 }
 
+interface GraphData { //Could probably delete this low key
+  nodes: Node[];
+  edges: Edge[];
+  money: number[]; 
+}
+
 function App() {
   const socketRef = useRef<Socket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  const [graphData, setGraphData] = useState<{ nodes: Node[]; edges: Edge[] }>({ nodes: [], edges: [] });
+  const [graphData, setGraphData] = useState<GraphData>({ nodes: [], edges: [], money: [0, 0] });
 
   useEffect(() => {
     console.log('Socket initialized');
@@ -37,7 +43,7 @@ function App() {
     socket.on('disconnect', (reason) => console.error('Disconnected:', reason));
 
     // Listen for graph data updates
-    socket.on('graphData', (data: { nodes: Node[]; edges: Edge[] }) => {
+    socket.on('graphData', (data: { nodes: Node[]; edges: Edge[]; money: number[] }) => {
       console.log('Graph data received:', data);
       setGraphData(data);
     });
@@ -112,7 +118,7 @@ function App() {
       // Draw nodes
       graphData.nodes.forEach((node) => {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, 10, 0, 2 * Math.PI);
+        ctx.arc(node.x, node.y, node.size+3, 0, 2 * Math.PI);
         ctx.fillStyle = node.owner;
         ctx.fill();
         ctx.stroke();
@@ -138,6 +144,11 @@ function App() {
 
   return (
     <div className="App" style={{ backgroundColor: 'gray' }}>
+      {/* Display Money Values */}
+      <div className="money-display">
+        <p>Player 1 Money: {graphData.money[0]}</p>
+        <p>Player 2 Money: {graphData.money[1]}</p>
+      </div>
       <canvas ref={canvasRef} className="canvas"></canvas>
     </div>
   );
