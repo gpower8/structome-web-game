@@ -71,7 +71,7 @@ function generateRandomGraph() {
             const edgeProbability = distanceFunction(distance);
 
             if (Math.random() < edgeProbability && !doesPathOverlap(nodes[i], nodes[j], edges, nodes)) {
-                edges.push({ from: nodes[i].id, to: nodes[j].id });
+                edges.push({ from: nodes[i].id, to: nodes[j].id, flowing:false });
             }
         }
     }
@@ -80,17 +80,34 @@ function generateRandomGraph() {
 }
 
 const storedGraphData = generateRandomGraph();
-const TICK_RATE = 1000 / 1; // 1 times per second
+const TICK_RATE = 1000 / 1 // 1 times per second
 
 // Function to update the game state
 function updateGameState() {
     
-    if(storedGraphData && storedGraphData.nodes && storedGraphData.edges) {
+    if (storedGraphData && storedGraphData.nodes && storedGraphData.edges && storedGraphData.money) {
         //Grow nodes
         storedGraphData.nodes.forEach(node => {
             // Check if the node owner is not 'gray' and size is less than 30
             if (node.owner !== 'gray' && node.size < 30) {
                 node.size++;
+            }
+        });
+        storedGraphData.money = storedGraphData.money.map(m => m + 1);
+
+        storedGraphData.edges.forEach(edge => {
+            // Check if the edge is flowing
+            if (edge.flowing) {
+                // Find the 'from' and 'to' nodes in the nodes array
+                const fromNode = storedGraphData.nodes.find(node => node.id === edge.from);
+                const toNode = storedGraphData.nodes.find(node => node.id === edge.to);
+
+                // Check if the 'from' node has a size of 2 or more
+                if (fromNode.size >= 2) {
+                    // Transfer 1 size from the 'from' node to the 'to' node
+                    fromNode.size -= 1;
+                    toNode.size += 1;
+                }
             }
         });
 
@@ -123,8 +140,19 @@ io.on('connection', (socket) => {
     socket.on('updateNodeOwner', ({ nodeId, newOwner }) => {
         console.log('Node clicked on');
         const node = storedGraphData.nodes.find(node => node.id === nodeId);
-        if (node) {
+        if (node && storedGraphData.money[0] >= 5) {
             node.owner = newOwner;
+            // Subtract 5 points from player 1's money if he has 5 or more
+            storedGraphData.money[0] -= 5;
+            io.emit('graphData', storedGraphData);
+        }
+    });
+    socket.on('updateEdgeFlowing', ({ edgeId, flowing }) => {
+        console.log('Edge clicked on');
+        const edgeIndex = storedGraphData.edges.findIndex(edge => `${edge.from}-${edge.to}` === edgeId);
+        if (edgeIndex !== -1) {
+            storedGraphData.edges[edgeIndex].flowing = flowing;
+            io.emit('graphData', storedGraphData);
         }
     });
     

@@ -16,6 +16,8 @@ interface Node {
 interface Edge {
   from: number;
   to: number;
+  flowing: boolean;
+  //locked: boolean;
 }
 
 interface GraphData { //Could probably delete this low key
@@ -91,13 +93,31 @@ function App() {
     // Find if a node was clicked
     const clickedNode = graphData.nodes.find(node => {
       const distance = Math.sqrt((node.x - x) ** 2 + (node.y - y) ** 2);
-      return distance < 20; // 3 is distance from node that must be clicked
+      return distance < 20; // 20 is distance from node that must be clicked
+    });
+
+    const clickedEdge = graphData.edges.find(edge => {
+      const fromNode = graphData.nodes.find((node) => node.id === edge.from);
+      const toNode = graphData.nodes.find((node) => node.id === edge.to);
+
+      if (fromNode && toNode) {
+        const dx = toNode.x - fromNode.x;
+        const dy = toNode.y - fromNode.y;
+        const distance = Math.abs((dy * x - dx * y + toNode.x * fromNode.y - toNode.y * fromNode.x) / Math.sqrt(dx * dx + dy * dy));
+
+        return distance < 5; //number is distance from edge
+      }
+
+      return false;
     });
 
     if (clickedNode) {
       // Emit an event to the server to update the node owner if socketRef isnt null
       socketRef.current!.emit('updateNodeOwner', { nodeId: clickedNode.id, newOwner: 'blue' });
-      console.log('Emitting Click')
+      console.log('Clicked on node')
+    } else if (clickedEdge){
+      socketRef.current!.emit('updateEdgeFlowing', { edgeId: clickedEdge.from + "-" + clickedEdge.to, flowing: !clickedEdge.flowing });
+      console.log('Clicked on edge')
     }
   };
   
@@ -118,7 +138,7 @@ function App() {
       // Draw nodes
       graphData.nodes.forEach((node) => {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, node.size+3, 0, 2 * Math.PI);
+        ctx.arc(node.x, node.y, Math.sqrt(node.size + 12), 0, 2 * Math.PI);
         ctx.fillStyle = node.owner;
         ctx.fill();
         ctx.stroke();
@@ -131,11 +151,32 @@ function App() {
         const toNode = graphData.nodes.find((node) => node.id === edge.to);
 
         if (fromNode && toNode) {
+          // Draw the line
           ctx.beginPath();
           ctx.moveTo(fromNode.x, fromNode.y);
           ctx.lineTo(toNode.x, toNode.y);
-          ctx.strokeStyle = 'red';
+          ctx.strokeStyle = edge.flowing ? 'blue' : 'black';
           ctx.stroke();
+
+          // Calculate the angle of the line
+          const angle = Math.atan2(toNode.y - fromNode.y, toNode.x - fromNode.x);
+
+          // Set the length of the arrowhead
+          const arrowLength = 10; // Length of the arrowhead lines
+          const arrowWidth = 5; // Width of the base of the arrowhead
+
+          // Calculate the points for the arrowhead
+          const arrowX = toNode.x - arrowLength * Math.cos(angle);
+          const arrowY = toNode.y - arrowLength * Math.sin(angle);
+
+          // Draw the arrowhead as a triangle
+          ctx.beginPath();
+          ctx.moveTo(arrowX - arrowWidth * Math.sin(angle), arrowY + arrowWidth * Math.cos(angle));
+          ctx.lineTo(toNode.x, toNode.y); // Tip of the arrowhead
+          ctx.lineTo(arrowX + arrowWidth * Math.sin(angle), arrowY - arrowWidth * Math.cos(angle));
+          ctx.fillStyle = edge.flowing ? 'blue' : 'black'; // Fill color of the arrowhead
+          ctx.fill();
+
           ctx.closePath();
         }
       });
