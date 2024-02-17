@@ -82,19 +82,21 @@ function updateGameState(roomId) {
                 const fromNode = gameState.nodes.find(node => node.id === edge.from);
                 const toNode = gameState.nodes.find(node => node.id === edge.to);
 
-                if (fromNode && toNode && fromNode.size >= 5) { //atleast size 5 to attack
-                    if (fromNode.owner === toNode.owner) { //If same color nodes, transfer, otherwise fight
-                        if (toNode.size<100){
-                            fromNode.size -= 1;
-                            toNode.size += 1;
+                if (fromNode && toNode && fromNode.size >= 5) { // Ensure at least size 5 to attack or transfer
+                    const transferAmount = Math.ceil(fromNode.size * 0.01); // Calculate 1% of the 'from' node's size, rounded up
+
+                    if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
+                        if (toNode.size < 100) {
+                            fromNode.size -= transferAmount; // Subtract the transfer amount from the 'from' node
+                            toNode.size += transferAmount; // Add the transfer amount to the 'to' node
                         }
                     } else {
-                        fromNode.size -= 1;
-                        toNode.size -= 1;
+                        fromNode.size -= transferAmount; // Subtract the transfer amount for the attack
+                        toNode.size -= transferAmount; // The 'to' node also loses the transfer amount in the fight
 
                         if (toNode.size <= 0) {
-                            toNode.owner = fromNode.owner; //Switch color of node
-                            toNode.size = 1; 
+                            toNode.owner = fromNode.owner; // Switch the color of the node if 'to' node's size drops to 0 or below
+                            toNode.size = Math.max(1, transferAmount); // Ensure the 'to' node has at least size 1 or the transfer amount after the color switch
                         }
                     }
                 }
