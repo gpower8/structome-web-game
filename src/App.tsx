@@ -25,20 +25,31 @@ interface GraphData {
   money: number[];
 }
 
+interface Player {
+  id: number;
+  color: string;
+}
+
 function App() {
   const socketRef = useRef<Socket | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [graphData, setGraphData] = useState<GraphData>({ nodes: [], edges: [], money: [0, 0] });
   const [roomId, setRoomId] = useState<string | null>(null);
+  const [player, setPlayer] = useState<Player | null>(null);
+  const [numPlayers, setNumPlayers] = useState<number>(2); // Default to 2 players
 
   useEffect(() => {
     socketRef.current = io('http://localhost:3001');
     const socket = socketRef.current;
 
     socket.on('connect', () => console.log('Connected to the server.'));
-    socket.on('roomCreated', (id: string) => {
-      console.log('Room created with ID:', id);
-      setRoomId(id);
+    socket.on('roomCreated', ({ roomId, playerInfo }: { roomId: string; playerInfo: Player }) => {
+      console.log('Room created with ID:', roomId);
+      setRoomId(roomId);
+      setPlayer(playerInfo);
+    });
+    socket.on('playerInfo', (playerInfo: Player) => {
+      setPlayer(playerInfo); // Set player state with the received info
     });
     socket.on('graphData', (data: GraphData) => {
       setGraphData(data);
@@ -49,8 +60,8 @@ function App() {
     };
   }, []);
 
-  const createRoom = () => {
-    socketRef.current?.emit('createRoom');
+  const createRoom = (numPlayers: number) => {
+    socketRef.current?.emit('createRoom', numPlayers);
   };
 
   const joinRoom = (id: string) => {
@@ -116,7 +127,7 @@ function App() {
       if (clickedNode) {
         // Emit event to update node owner
         console.log('Node Clicked');
-        socketRef.current?.emit('updateNodeOwner', { roomId, nodeId: clickedNode.id, newOwner: 'blue' }); // Change 'blue' to the current player's color
+        socketRef.current?.emit('updateNodeOwner', { roomId, nodeId: clickedNode.id}); // Change 'blue' to the current player's color
         return;
       }
 
@@ -156,7 +167,15 @@ function App() {
     <div className="App" style={{ backgroundColor: 'gray', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {!roomId && (
         <div>
-          <button onClick={createRoom}>Create Room</button>
+          {/* Dropdown for selecting number of players */}
+          <select value={numPlayers} onChange={(e) => setNumPlayers(Number(e.target.value))}>
+            {[2, 3, 4, 5].map((value) => (
+              <option key={value} value={value}>
+                {value} Players
+              </option>
+            ))}
+          </select>
+          <button onClick={() => createRoom(numPlayers)}>Create Room</button>
           <input
             type="text"
             placeholder="Room ID"
@@ -171,10 +190,11 @@ function App() {
       {roomId && (
         <div>
           <p>Room ID: {roomId}</p>
-          {/* Display Money Values */}
+          {/* Display only the current player's money */}
           <div className="money-display">
-            <p>Player 1 Money: {graphData.money[0]}</p>
-            <p>Player 2 Money: {graphData.money[1]}</p>
+            {player && (
+              <p>Player {player.id}'s Money: {graphData.money[player.id - 1]}</p>
+            )}
           </div>
           <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="canvas" />
         </div>
