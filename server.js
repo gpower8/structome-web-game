@@ -70,7 +70,7 @@ function updateGameState(roomId) {
 
         // Grow nodes
         gameState.nodes.forEach(node => {
-            if (node.owner !== 'gray' && node.size < 30) {
+            if (node.owner !== 'gray' && node.size < 100) {
                 node.size++;
             }
         });
@@ -82,9 +82,21 @@ function updateGameState(roomId) {
                 const fromNode = gameState.nodes.find(node => node.id === edge.from);
                 const toNode = gameState.nodes.find(node => node.id === edge.to);
 
-                if (fromNode && toNode && fromNode.size >= 2) {
-                    fromNode.size -= 1; // Transfer size from the 'from' node
-                    toNode.size += 1;   // to the 'to' node
+                if (fromNode && toNode && fromNode.size >= 5) { //atleast size 5 to attack
+                    if (fromNode.owner === toNode.owner) { //If same color nodes, transfer, otherwise fight
+                        if (toNode.size<100){
+                            fromNode.size -= 1;
+                            toNode.size += 1;
+                        }
+                    } else {
+                        fromNode.size -= 1;
+                        toNode.size -= 1;
+
+                        if (toNode.size <= 0) {
+                            toNode.owner = fromNode.owner; //Switch color of node
+                            toNode.size = 1; 
+                        }
+                    }
                 }
             }
         });
@@ -157,13 +169,10 @@ io.on('connection', (socket) => {
         console.log('NodeClickedOn');
         const room = gameRooms[roomId];
         if (room) {
-            console.log('in Room loop');
             const player = room.players[socket.id];
             const node = room.gameState.nodes.find(node => node.id === nodeId);
-            console.log(player.id);
-            if (node && room.gameState.money[player.id-1] >= 5) {
+            if (node && node.owner === 'gray' && room.gameState.money[player.id-1] >= 5) {
                 node.owner = player.color;
-                console.log(player.color);
                 room.gameState.money[player.id-1] -= 5;
                 io.to(roomId).emit('graphData', room.gameState);
             }
@@ -175,8 +184,12 @@ io.on('connection', (socket) => {
         if (room) {
             const edge = room.gameState.edges.find(edge => `${edge.from}-${edge.to}` === edgeId);
             if (edge) {
-                edge.flowing = flowing;
-                io.to(roomId).emit('graphData', room.gameState);
+                const fromNode = room.gameState.nodes.find(node => node.id === edge.from);
+                const currentPlayer = room.players[socket.id];
+                if (fromNode && currentPlayer && fromNode.owner === currentPlayer.color) {
+                    edge.flowing = flowing;
+                    io.to(roomId).emit('graphData', room.gameState);
+                }
             }
         }
     });

@@ -86,7 +86,7 @@ function App() {
       // Draw nodes
       graphData.nodes.forEach(node => {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, 20, 0, 2 * Math.PI, false);
+        ctx.arc(node.x, node.y, Math.sqrt(node.size*2)+5, 0, 2 * Math.PI, false);
         ctx.fillStyle = node.owner;
         ctx.fill();
         ctx.lineWidth = 1;
@@ -117,7 +117,6 @@ function App() {
       const rect = canvas.getBoundingClientRect();
       const x = (event.clientX - rect.left) * (canvas.width / rect.width);
       const y = (event.clientY - rect.top) * (canvas.height / rect.height);
-
       // Check if a node was clicked
       const clickedNode = graphData.nodes.find(node => {
         const distance = Math.sqrt(Math.pow(node.x - x, 2) + Math.pow(node.y - y, 2));
@@ -150,7 +149,6 @@ function App() {
       });
 
       if (clickedEdge) {
-        // Emit event to update edge state (e.g., flowing)
         console.log('Edge Clicked');
         socketRef.current?.emit('updateEdgeFlowing', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`, flowing: !clickedEdge.flowing });
       }
@@ -167,7 +165,6 @@ function App() {
     <div className="App" style={{ backgroundColor: 'gray', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
       {!roomId && (
         <div>
-          {/* Dropdown for selecting number of players */}
           <select value={numPlayers} onChange={(e) => setNumPlayers(Number(e.target.value))}>
             {[2, 3, 4, 5].map((value) => (
               <option key={value} value={value}>
