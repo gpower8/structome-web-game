@@ -45,7 +45,10 @@ function generateRandomGraph() {
     for (let i = 0; i < numNodes; i++) {
         for (let j = i + 1; j < numNodes; j++) {
             if (Math.random() < calculateEdgeProbability(nodes[i], nodes[j])) {
-                edges.push({ from: nodes[i].id, to: nodes[j].id, flowing: false });
+                // Use Math.random() to determine the twoway property with a 1 in 3 chance for true
+                const twowayassign = Math.random() < 1 / 3;
+
+                edges.push({ from: nodes[i].id, to: nodes[j].id, flowing: false, twoway: twowayassign, reversed: false });
             }
         }
     }
@@ -79,16 +82,22 @@ function updateGameState(roomId) {
         // Update edges
         gameState.edges.forEach(edge => {
             if (edge.flowing) {
-                const fromNode = gameState.nodes.find(node => node.id === edge.from);
-                const toNode = gameState.nodes.find(node => node.id === edge.to);
-
+                const fromNode = edge.reversed
+                    ? room.gameState.nodes.find(node => node.id === edge.to) //opposite if reversed
+                    : room.gameState.nodes.find(node => node.id === edge.from);
+                const toNode = edge.reversed
+                    ? room.gameState.nodes.find(node => node.id === edge.from)
+                    : room.gameState.nodes.find(node => node.id === edge.to);
                 if (fromNode && toNode && fromNode.size >= 5) { // Ensure at least size 5 to attack or transfer
-                    const transferAmount = Math.ceil(fromNode.size * 0.01); // Calculate 1% of the 'from' node's size, rounded up
-
+                    const transferAmount = Math.ceil(fromNode.size * 0.05); // Calculate 5% of the 'from' node's size, rounded up
+                    console.log('fromNode:' + fromNode.owner);
+                    console.log('toNode:' + toNode.owner);
                     if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
+                        console.log('toNodeSize:' + toNode.size);
                         if (toNode.size < 100) {
                             fromNode.size -= transferAmount; // Subtract the transfer amount from the 'from' node
                             toNode.size += transferAmount; // Add the transfer amount to the 'to' node
+                            console.log('transfer:'+transferAmount);
                         }
                     } else {
                         fromNode.size -= transferAmount; // Subtract the transfer amount for the attack
@@ -96,7 +105,7 @@ function updateGameState(roomId) {
 
                         if (toNode.size <= 0) {
                             toNode.owner = fromNode.owner; // Switch the color of the node if 'to' node's size drops to 0 or below
-                            toNode.size = Math.max(1, transferAmount); // Ensure the 'to' node has at least size 1 or the transfer amount after the color switch
+                            toNode.size = Math.max(1, transferAmount+toNode.size); // Ensure the 'to' node has at least size 1 or the transfer amount after the color switch
                         }
                     }
                 }
@@ -168,7 +177,7 @@ io.on('connection', (socket) => {
     });
 
     socket.on('updateNodeOwner', ({ roomId, nodeId }) => {
-        console.log('NodeClickedOn');
+        console.log('NodeClickedOn: '+nodeId);
         const room = gameRooms[roomId];
         if (room) {
             const player = room.players[socket.id];
@@ -182,15 +191,57 @@ io.on('connection', (socket) => {
     });
 
     socket.on('updateEdgeFlowing', ({ roomId, edgeId, flowing }) => {
+        console.log('edge left clicked on: '+edgeId);
         const room = gameRooms[roomId];
         if (room) {
             const edge = room.gameState.edges.find(edge => `${edge.from}-${edge.to}` === edgeId);
             if (edge) {
-                const fromNode = room.gameState.nodes.find(node => node.id === edge.from);
+                const fromNode = edge.reversed
+                    ? room.gameState.nodes.find(node => node.id === edge.to)    // If 'edge.reversed' is true
+                    : room.gameState.nodes.find(node => node.id === edge.from);
                 const currentPlayer = room.players[socket.id];
+                console.log(currentPlayer.color);
+                console.log(fromNode.owner);
                 if (fromNode && currentPlayer && fromNode.owner === currentPlayer.color) {
                     edge.flowing = flowing;
                     io.to(roomId).emit('graphData', room.gameState);
+                }
+            }
+        }
+    });
+
+    socket.on('swapDirections', ({ roomId, edgeId }) => {
+        console.log('Right-click on edge detected');
+        const room = gameRooms[roomId];
+        if (room) {
+            console.log('In room loop');
+            const edge = room.gameState.edges.find(edge => `${edge.from}-${edge.to}` === edgeId);
+            if (edge && edge.twoway) { //the two way edge exists
+                console.log('Two-way edge exists');
+                const fromNode = room.gameState.nodes.find(node => node.id === edge.from);
+                const toNode = room.gameState.nodes.find(node => node.id === edge.to);
+                const currentPlayer = room.players[socket.id];
+
+                if (fromNode && toNode && currentPlayer) { //if both nodes equal size, then either player can swap
+                    if (fromNode.size === toNode.size) {
+                        if (fromNode.owner === currentPlayer.color || toNode.owner === currentPlayer.color) {
+                            edge.reversed = !edge.reversed;
+                            edge.flowing = true;//Turn of flowing if swapped
+                            io.to(roomId).emit('graphData', room.gameState);
+                        } else {
+                            console.log('Player does not own any node of equal size, cannot reverse edge');
+                        }
+                    } else {
+                        const largerNode = fromNode.size > toNode.size ? fromNode : toNode;
+                        //determine larger node and if the current player owns the larger node
+                        if (largerNode.owner === currentPlayer.color) {
+                            edge.reversed = !edge.reversed;
+                            edge.flowing = true;//Turn of flowing if swapped
+                            io.to(roomId).emit('graphData', room.gameState);
+                        } else {
+                            console.log('Player does not own the larger node, cannot reverse edge');
+                        }
+                    }
                 }
             }
         }

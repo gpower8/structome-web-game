@@ -17,6 +17,8 @@ interface Edge {
   from: number;
   to: number;
   flowing: boolean;
+  twoway: boolean;
+  reversed: boolean;
 }
 
 interface GraphData {
@@ -96,18 +98,103 @@ function App() {
 
       // Draw edges
       graphData.edges.forEach(edge => {
-        const fromNode = graphData.nodes.find(node => node.id === edge.from);
-        const toNode = graphData.nodes.find(node => node.id === edge.to);
+        const fromNode = edge.reversed
+          ? graphData.nodes.find(node => node.id === edge.to)   // If 'edge.reversed' is true then assign backwards
+          : graphData.nodes.find(node => node.id === edge.from);
+        const toNode = edge.reversed
+          ? graphData.nodes.find(node => node.id === edge.from)
+          : graphData.nodes.find(node => node.id === edge.to);
         if (fromNode && toNode) {
-          ctx.beginPath();
-          ctx.moveTo(fromNode.x, fromNode.y);
-          ctx.lineTo(toNode.x, toNode.y);
-          ctx.strokeStyle = edge.flowing ? 'red' : 'black';
-          ctx.stroke();
+          const dx = toNode.x - fromNode.x;
+          const dy = toNode.y - fromNode.y;
+          const distance = Math.sqrt(dx * dx + dy * dy);
+          // Add Math.PI to reverse the direction of the triangles
+          const angle = Math.atan2(dy, dx) + Math.PI; // Reverse direction
+
+          const triangleSize = 10; // Set the size of the triangles
+          const spacing = 20; // Set the spacing between the triangles
+
+          // Calculate how many triangles can fit along the line
+          const triangleCount = Math.floor(distance / spacing);
+
+          for (let i = 0; i < triangleCount; i++) {
+            const segmentFraction = (i + 1) / (triangleCount + 1);
+            const triangleCenterX = fromNode.x + segmentFraction * dx;
+            const triangleCenterY = fromNode.y + segmentFraction * dy;
+
+            ctx.beginPath();
+            // Adjust the points to draw the triangle in the reversed direction
+            ctx.moveTo(
+              triangleCenterX + triangleSize * Math.cos(angle - Math.PI / 8),
+              triangleCenterY + triangleSize * Math.sin(angle - Math.PI / 8)
+            );
+            ctx.lineTo(
+              triangleCenterX + triangleSize * Math.cos(angle + Math.PI / 8),
+              triangleCenterY + triangleSize * Math.sin(angle + Math.PI / 8)
+            );
+            ctx.lineTo(
+              triangleCenterX + triangleSize * Math.cos(angle + Math.PI), // This now points towards the original 'fromNode'
+              triangleCenterY + triangleSize * Math.sin(angle + Math.PI)
+            );
+            ctx.closePath();
+            ctx.fillStyle = edge.flowing ? fromNode.owner : 'gray'; // Use the 'fromNode' color
+            ctx.fill();
+
+            if (edge.twoway) {
+              ctx.lineWidth = 2; // Set the stroke thickness to 5 pixels (or any other desired thickness)
+              ctx.strokeStyle = 'black';
+              ctx.stroke(); // Apply the thicker stroke to the path (triangle in this context)
+              ctx.lineWidth = 1; // Reset lineWidth back to 1 (or your default value) to avoid affecting other drawings
+            }
+          }
         }
       });
+
     }
   }, [graphData]);
+
+  useEffect(() => { //Right click
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleCanvasRightClick = (event: MouseEvent) => {
+      event.preventDefault(); // Prevent the default context menu
+
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+      const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+
+      // Check if an edge was right-clicked
+      const clickedEdge = graphData.edges.find(edge => {
+        const fromNode = graphData.nodes.find(node => node.id === edge.from);
+        const toNode = graphData.nodes.find(node => node.id === edge.to);
+        if (!fromNode || !toNode) return false;
+
+        const dx = toNode.x - fromNode.x;
+        const dy = toNode.y - fromNode.y;
+        const length = Math.sqrt(dx * dx + dy * dy);
+        const dot = (((x - fromNode.x) * dx) + ((y - fromNode.y) * dy)) / Math.pow(length, 2);
+
+        const closestX = fromNode.x + (dot * dx);
+        const closestY = fromNode.y + (dot * dy);
+        const distance = Math.sqrt(Math.pow(x - closestX, 2) + Math.pow(y - closestY, 2));
+
+        return distance < 10; // Assuming a clickable range of 10 pixels around the edge
+      });
+
+      if (clickedEdge) {
+        console.log('Edge Right-Clicked');
+        // Emit a custom event for the right-clicked edge
+        socketRef.current?.emit('swapDirections', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}` });
+      }
+    };
+
+    canvas.addEventListener('contextmenu', handleCanvasRightClick);
+
+    return () => {
+      canvas.removeEventListener('contextmenu', handleCanvasRightClick);
+    };
+  }, [graphData, roomId]); // Re-run when graphData or roomId changes
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -139,11 +226,14 @@ function App() {
         const dx = toNode.x - fromNode.x;
         const dy = toNode.y - fromNode.y;
         const length = Math.sqrt(dx * dx + dy * dy);
-        const dot = (((x - fromNode.x) * dx) + ((y - fromNode.y) * dy)) / Math.pow(length, 2);
+        const dot = (((x - fromNode.x) * dx) + ((y - fromNode.y) * dy)) / (length * length);
+
+        // Ensure dot is within the range of [0, 1] to be on the line segment
+        if (dot < 0 || dot > 1) return false;
 
         const closestX = fromNode.x + (dot * dx);
         const closestY = fromNode.y + (dot * dy);
-        const distance = Math.sqrt(Math.pow(x - closestX, 2) + Math.pow(y - closestY, 2));
+        const distance = Math.sqrt((x - closestX) ** 2 + (y - closestY) ** 2);
 
         return distance < 10; // Assuming a clickable range of 10 pixels around the edge
       });
