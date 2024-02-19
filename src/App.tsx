@@ -11,6 +11,7 @@ interface Node {
   y: number;
   size: number;
   owner: string;
+  moneynode: boolean;
 }
 
 interface Edge {
@@ -70,8 +71,12 @@ function App() {
     socketRef.current?.emit('joinRoom', id);
     setRoomId(id);
   };
+  //bridge build mode
+  const [isBridgeBuildMode, setIsBridgeBuildMode] = useState(false);
+  const [firstNode, setFirstNode] = useState<Node | null>(null);
+  const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
 
-  useEffect(() => {
+  useEffect(() => { //Main drawing useEffect
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (canvas && ctx) {
@@ -146,12 +151,20 @@ function App() {
               ctx.stroke(); // Apply the thicker stroke to the path (triangle in this context)
               ctx.lineWidth = 1; // Reset lineWidth back to 1 (or your default value) to avoid affecting other drawings
             }
+            if (firstNode && cursorPosition && isBridgeBuildMode) {
+              // Draw a line from firstNode to cursorPosition
+              ctx.beginPath();
+              ctx.moveTo(firstNode.x, firstNode.y);
+              ctx.lineTo(cursorPosition.x, cursorPosition.y);
+              ctx.strokeStyle = '#000'; // Set line color
+              ctx.lineWidth = 2; // Set line width
+              ctx.stroke();
+            }
           }
         }
       });
-
     }
-  }, [graphData]);
+  }, [graphData, firstNode, cursorPosition, isBridgeBuildMode]);
 
   useEffect(() => { //Right click
     const canvas = canvasRef.current;
@@ -196,7 +209,45 @@ function App() {
     };
   }, [graphData, roomId]); // Re-run when graphData or roomId changes
 
-  useEffect(() => {
+
+  useEffect(() => { //Activate Bridge Mode
+    const handleKeyPress = (event: KeyboardEvent) => {
+      if (event.key === 'a') {
+        console.log('pressed a');
+        setIsBridgeBuildMode(!isBridgeBuildMode); // Toggle bridge build mode
+        setFirstNode(null); // Reset first node selection
+        console.log('pressed'+isBridgeBuildMode);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyPress);
+
+    return () => {
+      window.removeEventListener('keydown', handleKeyPress);
+    };
+  }, [isBridgeBuildMode]);
+
+  useEffect(() => { //Cursor Track Helper
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    const handleMouseMove = (event: MouseEvent) => {
+      if (!isBridgeBuildMode || !firstNode) return; // Only track cursor in bridge build mode and after selecting the first node
+
+      const rect = canvas.getBoundingClientRect();
+      const x = (event.clientX - rect.left) * (canvas.width / rect.width);
+      const y = (event.clientY - rect.top) * (canvas.height / rect.height);
+      setCursorPosition({ x, y });
+    };
+
+    canvas.addEventListener('mousemove', handleMouseMove);
+
+    return () => {
+      canvas.removeEventListener('mousemove', handleMouseMove);
+    };
+  }, [isBridgeBuildMode, firstNode]);
+
+  useEffect(() => { //left click
     const canvas = canvasRef.current;
     if (!canvas) return;
 
@@ -211,45 +262,57 @@ function App() {
       });
 
       if (clickedNode) {
-        // Emit event to update node owner
-        console.log('Node Clicked');
-        socketRef.current?.emit('updateNodeOwner', { roomId, nodeId: clickedNode.id}); // Change 'blue' to the current player's color
-        return;
+        console.log('node clicked'+isBridgeBuildMode);
+        if(isBridgeBuildMode){
+          if (!firstNode) {
+            setFirstNode(clickedNode); // Set first node if not already set
+          } else {
+            // Emit edge build request to server with firstNode and clickedNode
+            socketRef.current?.emit('buildEdge', { roomId, from: firstNode.id, to: clickedNode.id });
+            setIsBridgeBuildMode(false); // Exit bridge build mode
+            setFirstNode(null); // Reset first node selection
+            console.log('processing click'+isBridgeBuildMode);
+          }
+        } else {
+          // Emit event to update node owner
+          console.log('Node Clicked');
+          socketRef.current?.emit('updateNodeOwner', { roomId, nodeId: clickedNode.id }); // Change 'blue' to the current player's color
+          return;
+        }
+      } else {
+        // Check if an edge was clicked (optional, based on your game logic)
+        const clickedEdge = graphData.edges.find(edge => {
+          const fromNode = graphData.nodes.find(node => node.id === edge.from);
+          const toNode = graphData.nodes.find(node => node.id === edge.to);
+          if (!fromNode || !toNode) return false;
+
+          const dx = toNode.x - fromNode.x;
+          const dy = toNode.y - fromNode.y;
+          const length = Math.sqrt(dx * dx + dy * dy);
+          const dot = (((x - fromNode.x) * dx) + ((y - fromNode.y) * dy)) / (length * length);
+
+          // Ensure dot is within the range of [0, 1] to be on the line segment
+          if (dot < 0 || dot > 1) return false;
+
+          const closestX = fromNode.x + (dot * dx);
+          const closestY = fromNode.y + (dot * dy);
+          const distance = Math.sqrt((x - closestX) ** 2 + (y - closestY) ** 2);
+
+          return distance < 10; // Assuming a clickable range of 10 pixels around the edge
+        });
+
+        if (clickedEdge) {
+          console.log('Edge Clicked');
+          socketRef.current?.emit('updateEdgeFlowing', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`, flowing: !clickedEdge.flowing });
+        }
+      };
       }
-
-      // Check if an edge was clicked (optional, based on your game logic)
-      const clickedEdge = graphData.edges.find(edge => {
-        const fromNode = graphData.nodes.find(node => node.id === edge.from);
-        const toNode = graphData.nodes.find(node => node.id === edge.to);
-        if (!fromNode || !toNode) return false;
-
-        const dx = toNode.x - fromNode.x;
-        const dy = toNode.y - fromNode.y;
-        const length = Math.sqrt(dx * dx + dy * dy);
-        const dot = (((x - fromNode.x) * dx) + ((y - fromNode.y) * dy)) / (length * length);
-
-        // Ensure dot is within the range of [0, 1] to be on the line segment
-        if (dot < 0 || dot > 1) return false;
-
-        const closestX = fromNode.x + (dot * dx);
-        const closestY = fromNode.y + (dot * dy);
-        const distance = Math.sqrt((x - closestX) ** 2 + (y - closestY) ** 2);
-
-        return distance < 10; // Assuming a clickable range of 10 pixels around the edge
-      });
-
-      if (clickedEdge) {
-        console.log('Edge Clicked');
-        socketRef.current?.emit('updateEdgeFlowing', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`, flowing: !clickedEdge.flowing });
-      }
-    };
-
     canvas.addEventListener('click', handleCanvasClick);
 
     return () => {
       canvas.removeEventListener('click', handleCanvasClick);
     };
-  }, [graphData, roomId]); // Re-run when graphData or roomId changes
+  }, [graphData, roomId, isBridgeBuildMode]); // Re-run when graphData or roomId changes
 
   return (
     <div className="App" style={{ backgroundColor: 'gray', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

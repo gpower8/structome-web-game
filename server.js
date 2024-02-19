@@ -26,17 +26,17 @@ const gameRooms = {};
 
 function generateRandomGraph() {
     const nodes = [], edges = [];
-    const numNodes = 50, minDistance = 100, money = [0, 0, 0, 0, 0];
-
+    const numNodes = 50, minDistance = 90, money = [0, 0, 0, 0, 0];
     for (let i = 0; i < numNodes; i++) {
         let newNode;
         do {
             newNode = {
                 id: i,
-                x: Math.random() * 1600,
-                y: Math.random() * 900,
+                x: (Math.random() * 1560)+20, //changed math so node isnt on edge of screen
+                y: (Math.random() * 860)+20,
                 size: 1,
                 owner: 'gray',
+                moneynode: false
             };
         } while (nodes.some(node => getDistance(newNode, node) < minDistance));
         nodes.push(newNode);
@@ -44,11 +44,10 @@ function generateRandomGraph() {
 
     for (let i = 0; i < numNodes; i++) {
         for (let j = i + 1; j < numNodes; j++) {
-            if (Math.random() < calculateEdgeProbability(nodes[i], nodes[j])) {
-                // Use Math.random() to determine the twoway property with a 1 in 3 chance for true
-                const twowayassign = Math.random() < 1 / 3;
+            const potentialEdge = { from: nodes[i].id, to: nodes[j].id, flowing: false, twoway: Math.random() < 1 / 3, reversed: false};
 
-                edges.push({ from: nodes[i].id, to: nodes[j].id, flowing: false, twoway: twowayassign, reversed: false });
+            if (Math.random() < calculateEdgeProbability(nodes[i], nodes[j]) && !doesEdgeOverlap(potentialEdge, edges, nodes)) {
+                edges.push(potentialEdge);
             }
         }
     }
@@ -64,6 +63,85 @@ function calculateEdgeProbability(nodeA, nodeB) {
     const distance = getDistance(nodeA, nodeB);
     const maxDistance = Math.hypot(1600, 900);
     return Math.pow((maxDistance - distance) / maxDistance, 12);
+}
+
+//helper functions for line intersection or lines being too close together
+function calculateEdgeAngle(p1, p2) {
+    return Math.atan2(p2.y - p1.y, p2.x - p1.x);
+}
+
+function pointToLineDistance(point, lineStart, lineEnd) {
+    const l2 = Math.pow(lineStart.x - lineEnd.x, 2) + Math.pow(lineStart.y - lineEnd.y, 2);
+    if (l2 === 0) return getDistance(point, lineStart); // lineStart and lineEnd are the same point
+
+    let t = ((point.x - lineStart.x) * (lineEnd.x - lineStart.x) + (point.y - lineStart.y) * (lineEnd.y - lineStart.y)) / l2;
+    t = Math.max(0, Math.min(1, t)); // Clamp t to the range [0, 1]
+
+    const projection = { x: lineStart.x + t * (lineEnd.x - lineStart.x), y: lineStart.y + t * (lineEnd.y - lineStart.y) };
+    return getDistance(point, projection);
+}
+
+function doLinesIntersect(p1, q1, p2, q2) {
+    // Extracting coordinates from the points
+    const x1 = p1.x, y1 = p1.y, x2 = q1.x, y2 = q1.y;
+    const x3 = p2.x, y3 = p2.y, x4 = q2.x, y4 = q2.y;
+
+    // Check for zero-length lines
+    if ((x1 === x2 && y1 === y2) || (x3 === x4 && y3 === y4)) {
+        return false;
+    }
+
+    // Check for shared endpoints (connected at a node)
+    if ((x1 === x3 && y1 === y3) || (x1 === x4 && y1 === y4) ||
+        (x2 === x3 && y2 === y3) || (x2 === x4 && y2 === y4)) {
+        return false;
+    }
+
+    const denominator = ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
+
+    // Lines are parallel
+    if (denominator === 0) {
+        return false;
+    }
+
+    let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denominator;
+    let ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denominator;
+
+    // Check if the intersection is along the segments (excluding endpoints)
+    if (ua <= 0 || ua >= 1 || ub <= 0 || ub >= 1) {
+        return false;
+    }
+
+    // If we reach here, lines intersect (not at endpoints)
+    return true;
+}
+
+// Function to check if the new edge overlaps with existing edges
+function doesEdgeOverlap(newEdge, existingEdges, nodes, proximityThreshold = 10, angleThreshold = Math.PI / 12) {
+    const newEdgeStart = nodes.find(node => node.id === newEdge.from);
+    const newEdgeEnd = nodes.find(node => node.id === newEdge.to);
+    const newEdgeAngle = calculateEdgeAngle(newEdgeStart, newEdgeEnd);
+
+    for (const edge of existingEdges) {
+        const existingEdgeStart = nodes.find(node => node.id === edge.from);
+        const existingEdgeEnd = nodes.find(node => node.id === edge.to);
+
+        // First, check for actual line intersection excluding endpoints
+        if (doLinesIntersect(newEdgeStart, newEdgeEnd, existingEdgeStart, existingEdgeEnd)) {
+            return true; // The new edge technically intersects with an existing edge
+        }
+
+        /*/ Next, check for visual distinguishability based on proximity and angle
+        const existingEdgeAngle = calculateEdgeAngle(existingEdgeStart, existingEdgeEnd);
+        if (Math.abs(newEdgeAngle - existingEdgeAngle) < angleThreshold) {
+            const distance1 = pointToLineDistance(newEdgeStart, existingEdgeStart, existingEdgeEnd);
+            const distance2 = pointToLineDistance(newEdgeEnd, existingEdgeStart, existingEdgeEnd);
+            if (distance1 < proximityThreshold || distance2 < proximityThreshold) {
+                return true; // The new edge is visually indistinguishable from an existing edge
+            }
+        }*/
+    }
+    return false; // No intersection or indistinguishable overlap found
 }
 
 function updateGameState(roomId) {
@@ -90,14 +168,10 @@ function updateGameState(roomId) {
                     : room.gameState.nodes.find(node => node.id === edge.to);
                 if (fromNode && toNode && fromNode.size >= 5) { // Ensure at least size 5 to attack or transfer
                     const transferAmount = Math.ceil(fromNode.size * 0.05); // Calculate 5% of the 'from' node's size, rounded up
-                    console.log('fromNode:' + fromNode.owner);
-                    console.log('toNode:' + toNode.owner);
                     if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
-                        console.log('toNodeSize:' + toNode.size);
                         if (toNode.size < 100) {
                             fromNode.size -= transferAmount; // Subtract the transfer amount from the 'from' node
                             toNode.size += transferAmount; // Add the transfer amount to the 'to' node
-                            console.log('transfer:'+transferAmount);
                         }
                     } else {
                         fromNode.size -= transferAmount; // Subtract the transfer amount for the attack
@@ -200,8 +274,6 @@ io.on('connection', (socket) => {
                     ? room.gameState.nodes.find(node => node.id === edge.to)    // If 'edge.reversed' is true
                     : room.gameState.nodes.find(node => node.id === edge.from);
                 const currentPlayer = room.players[socket.id];
-                console.log(currentPlayer.color);
-                console.log(fromNode.owner);
                 if (fromNode && currentPlayer && fromNode.owner === currentPlayer.color) {
                     edge.flowing = flowing;
                     io.to(roomId).emit('graphData', room.gameState);
@@ -209,6 +281,36 @@ io.on('connection', (socket) => {
             }
         }
     });
+
+    socket.on('buildEdge', ({ roomId, from, to }) => {
+        console.log('Build edge request from node ' + from + ' to node ' + to);
+        const room = gameRooms[roomId];
+        if (room) {
+            const player = room.players[socket.id];
+            const fromNode = room.gameState.nodes.find(node => node.id === from);
+            const toNode = room.gameState.nodes.find(node => node.id === to);
+
+            // Check if the 'from' node is owned by the player and the player has enough money
+            if (fromNode && toNode && fromNode.owner === player.color && room.gameState.money[player.id - 1] >= 5) {
+                const newEdge = { from: fromNode.id, to: toNode.id, flowing: false, twoway: false, reversed: false };
+
+                // Check if the new edge overlaps with existing edges
+                if (!doesEdgeOverlap(newEdge, room.gameState.edges, room.gameState.nodes)) {
+                    room.gameState.edges.push(newEdge); // Add the new edge to the game state
+                    room.gameState.money[player.id - 1] -= 5; // Deduct the cost from the player's money
+
+                    // Broadcast the updated game state to all players in the room
+                    io.to(roomId).emit('graphData', room.gameState);
+                    console.log('Edge built successfully from node ' + from + ' to node ' + to);
+                } else {
+                    console.log('Edge build request failed due to overlap');
+                }
+            } else {
+                console.log('Edge build request failed due to ownership or insufficient funds');
+            }
+        }
+    });
+
 
     socket.on('swapDirections', ({ roomId, edgeId }) => {
         console.log('Right-click on edge detected');
@@ -248,9 +350,11 @@ io.on('connection', (socket) => {
     });
 
     socket.on('disconnect', () => {
+        console.log('User Disconnected')
         Object.keys(gameRooms).forEach(roomId => {
             const room = gameRooms[roomId];
             if (room.players[socket.id]) {
+                console.log('deleting player')
                 delete room.players[socket.id]; // Remove the player
 
                 // If the game loop is running and players are now less than maxPlayers, stop the game loop
