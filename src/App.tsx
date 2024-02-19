@@ -76,7 +76,11 @@ function App() {
   const [firstNode, setFirstNode] = useState<Node | null>(null);
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
 
-  useEffect(() => { //Main drawing useEffect
+  //nuke and bastion
+  const [isBastionMode, setIsBastionMode] = useState(false);
+  const [isNukeMode, setIsNukeMode] = useState(false);
+
+  useEffect(() => { //Main drawing canvas useEffect
     const canvas = canvasRef.current;
     const ctx = canvas?.getContext('2d');
     if (canvas && ctx) {
@@ -93,12 +97,18 @@ function App() {
       // Draw nodes
       graphData.nodes.forEach(node => {
         ctx.beginPath();
-        ctx.arc(node.x, node.y, Math.sqrt(node.size*2)+5, 0, 2 * Math.PI, false);
+        ctx.arc(node.x, node.y, Math.sqrt(node.size/4)+5, 0, 2 * Math.PI, false);
         ctx.fillStyle = node.owner;
         ctx.fill();
         ctx.lineWidth = 1;
         ctx.strokeStyle = '#003300';
         ctx.stroke();
+        if (node.moneynode) {
+          ctx.lineWidth = 7; // Set the stroke thickness to 5 pixels (or any other desired thickness)
+          ctx.strokeStyle = '003300';
+          ctx.stroke(); // Apply the thicker stroke to the path (triangle in this context)
+          ctx.lineWidth = 1; // Reset lineWidth back to 1 (or your default value) to avoid affecting other drawings
+        }
       });
 
       // Draw edges
@@ -142,11 +152,11 @@ function App() {
               triangleCenterY + triangleSize * Math.sin(angle + Math.PI)
             );
             ctx.closePath();
-            ctx.fillStyle = edge.flowing ? fromNode.owner : 'gray'; // Use the 'fromNode' color
+            ctx.fillStyle = edge.flowing ? fromNode.owner : 'LightGray'; // Use the 'fromNode' color
             ctx.fill();
 
             if (edge.twoway) {
-              ctx.lineWidth = 2; // Set the stroke thickness to 5 pixels (or any other desired thickness)
+              ctx.lineWidth = 1; // Set the stroke thickness to 5 pixels (or any other desired thickness)
               ctx.strokeStyle = 'black';
               ctx.stroke(); // Apply the thicker stroke to the path (triangle in this context)
               ctx.lineWidth = 1; // Reset lineWidth back to 1 (or your default value) to avoid affecting other drawings
@@ -164,7 +174,7 @@ function App() {
         }
       });
     }
-  }, [graphData, firstNode, cursorPosition, isBridgeBuildMode]);
+  }, [graphData, firstNode, cursorPosition, isBridgeBuildMode, isNukeMode, isBastionMode]);
 
   useEffect(() => { //Right click
     const canvas = canvasRef.current;
@@ -213,13 +223,36 @@ function App() {
   }, [graphData, roomId]); // Re-run when graphData or roomId changes
 
 
-  useEffect(() => { //Activate Bridge Mode
+  useEffect(() => { // Activate Modes
     const handleKeyPress = (event: KeyboardEvent) => {
-      if (event.key === 'a') {
-        console.log('pressed a');
-        setIsBridgeBuildMode(!isBridgeBuildMode); // Toggle bridge build mode
-        setFirstNode(null); // Reset first node selection
-        console.log('pressed'+isBridgeBuildMode);
+      switch (event.key) {
+        case 'a':
+          console.log('Bridge Build Mode Toggled');
+          setIsBridgeBuildMode(current => !current);
+          setFirstNode(null); // Reset first node selection
+          if (!isBridgeBuildMode) {
+            setIsBastionMode(false);
+            setIsNukeMode(false);
+          }
+          break;
+        case 's':
+          console.log('Bastion Mode Toggled');
+          setIsBastionMode(current => !current);
+          if (isBastionMode) {
+            setIsBridgeBuildMode(false);
+            setIsNukeMode(false);
+          }
+          break;
+        case 'd':
+          console.log('Nuke Mode Toggled');
+          setIsNukeMode(current => !current);
+          if (isNukeMode) {
+            setIsBridgeBuildMode(false);
+            setIsBastionMode(false);
+          }
+          break;
+        default:
+          break;
       }
     };
 
@@ -228,7 +261,7 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [isBridgeBuildMode]);
+  }, [isBridgeBuildMode, isBastionMode, isNukeMode]);
 
   useEffect(() => { //Cursor Track Helper
     const canvas = canvasRef.current;
@@ -265,8 +298,8 @@ function App() {
       });
 
       if (clickedNode) {
-        console.log('node clicked'+isBridgeBuildMode);
         if(isBridgeBuildMode){
+          console.log('node clicked in bridge mode');
           if (!firstNode) {
             setFirstNode(clickedNode); // Set first node if not already set
           } else {
@@ -276,6 +309,16 @@ function App() {
             setFirstNode(null); // Reset first node selection
             console.log('processing click'+isBridgeBuildMode);
           }
+        } else if (isBastionMode) {
+          console.log('Node Clicked with Bastion')
+          socketRef.current?.emit('bastion', { roomId, nodeId: clickedNode.id });
+          setIsBastionMode(false);
+          return;
+        } else if (isNukeMode) {
+          console.log('Node Clicked with Nuke')
+          socketRef.current?.emit('nuke', { roomId, nodeId: clickedNode.id });
+          setIsNukeMode(false);
+          return;
         } else {
           // Emit event to update node owner
           console.log('Node Clicked');
@@ -315,7 +358,7 @@ function App() {
     return () => {
       canvas.removeEventListener('click', handleCanvasClick);
     };
-  }, [graphData, roomId, isBridgeBuildMode]); // Re-run when graphData or roomId changes
+  }, [graphData, roomId, isBridgeBuildMode, isNukeMode, isBastionMode]); // Re-run when graphData or roomId changes
 
   return (
     <div className="App" style={{ backgroundColor: 'gray', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>

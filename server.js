@@ -24,9 +24,25 @@ const playerProperties = {
 
 const gameRooms = {};
 
+const FRAMERATE = 12;
+const BASTIONCOST = 25;
+const BRIDGECOST = 20;
+const NUKECOST = 50;
+const NODECOST = 5;
+
+const INCOMERATE = 1;
+const MONEYNODEBONUS = 1;
+const MAXNODESIZE = 800;
+const TRANSFER = 0.01;
+const GROWTHRATE = 1;
+
 function generateRandomGraph() {
     const nodes = [], edges = [];
-    const numNodes = 50, minDistance = 90, money = [0, 0, 0, 0, 0];
+    const numNodes = 50, minDistance = 90, money = [5, 5, 5, 5, 5];
+    
+    const centerX = 1560 / 2 + 20; //Find middle of the screen
+    const centerY = 860 / 2 + 20;
+    
     for (let i = 0; i < numNodes; i++) {
         let newNode;
         do {
@@ -50,6 +66,22 @@ function generateRandomGraph() {
                 edges.push(potentialEdge);
             }
         }
+    }
+
+    // find nodes without edges
+    const nodesWithoutEdges = nodes.filter(node =>
+        !edges.some(edge => edge.from === node.id || edge.to === node.id)
+    );
+
+    if (nodesWithoutEdges.length > 0) {
+        const closestNode = nodesWithoutEdges.reduce((closest, node) => {
+            const distToCenter = getDistance({ x: centerX, y: centerY }, node);
+            const closestDistToCenter = getDistance({ x: centerX, y: centerY }, closest);
+            return distToCenter < closestDistToCenter ? node : closest;
+        }, nodesWithoutEdges[0]); // Initialize with the first node without edges
+        // Mark the closest node as a money node
+        closestNode.moneynode = true;
+        closestNode.size = 500;
     }
 
     return { nodes, edges, money };
@@ -118,45 +150,79 @@ function doLinesIntersect(p1, q1, p2, q2) {
 
 // Function to check if the new edge overlaps with existing edges
 function doesEdgeOverlap(newEdge, existingEdges, nodes, proximityThreshold = 10, angleThreshold = Math.PI / 12) {
+    // Check if an edge already exists directly between the same two nodes
+    if (existingEdges.some(edge => (edge.from === newEdge.from && edge.to === newEdge.to) || (edge.from === newEdge.to && edge.to === newEdge.from))) {
+        return true; // An edge already connects these nodes, so consider it an overlap
+    }
+
     const newEdgeStart = nodes.find(node => node.id === newEdge.from);
     const newEdgeEnd = nodes.find(node => node.id === newEdge.to);
+    if (!newEdgeStart || !newEdgeEnd) return false; // Ensure both nodes exist
+
     const newEdgeAngle = calculateEdgeAngle(newEdgeStart, newEdgeEnd);
 
     for (const edge of existingEdges) {
         const existingEdgeStart = nodes.find(node => node.id === edge.from);
         const existingEdgeEnd = nodes.find(node => node.id === edge.to);
+        if (!existingEdgeStart || !existingEdgeEnd) continue; // Skip if nodes don't exist
 
-        // First, check for actual line intersection excluding endpoints
+        // Check for actual line intersection excluding endpoints
         if (doLinesIntersect(newEdgeStart, newEdgeEnd, existingEdgeStart, existingEdgeEnd)) {
             return true; // The new edge technically intersects with an existing edge
         }
 
-        /*/ Next, check for visual distinguishability based on proximity and angle
-        const existingEdgeAngle = calculateEdgeAngle(existingEdgeStart, existingEdgeEnd);
-        if (Math.abs(newEdgeAngle - existingEdgeAngle) < angleThreshold) {
-            const distance1 = pointToLineDistance(newEdgeStart, existingEdgeStart, existingEdgeEnd);
-            const distance2 = pointToLineDistance(newEdgeEnd, existingEdgeStart, existingEdgeEnd);
-            if (distance1 < proximityThreshold || distance2 < proximityThreshold) {
-                return true; // The new edge is visually indistinguishable from an existing edge
-            }
-        }*/
+        // Add any additional overlap checks here (e.g., based on proximity and angle)
     }
-    return false; // No intersection or indistinguishable overlap found
+
+    return false; // No direct connection, intersection, or indistinguishable overlap found
 }
+
 
 function updateGameState(roomId) {
     const room = gameRooms[roomId];
     if (room && room.gameState) {
+        room.tickCount += 1;
+        //Delete room if gone on for too long
+        if (room.tickCount > 60000) {
+            console.log(`Tick count exceeded 60,000 for room ${roomId}. Deleting room.`);
+            if (room.gameLoopIntervalId) {
+                clearInterval(room.gameLoopIntervalId);
+            }
+            // Optionally, notify players that the room is being deleted
+            io.to(roomId).emit('roomDeleted', { message: 'Game over. Room has been deleted due to tick count limit.' });
+            delete gameRooms[roomId];
+            return;
+        }
+
+
         const { gameState } = room;
 
         // Grow nodes
         gameState.nodes.forEach(node => {
-            if (node.owner !== 'gray' && node.size < 100) {
-                node.size++;
+            if (node.owner !== 'gray' && node.size < MAXNODESIZE) {
+                node.size=node.size+GROWTHRATE;
             }
         });
         // Increment money for each player
-        gameState.money = gameState.money.map(m => m + 1);
+        if (room.tickCount % 12 === 0) {
+            let additionalIncome = new Array(room.gameState.money.length).fill(0);
+            // Iterate through all nodes to calculate additional income from money nodes
+            room.gameState.nodes.forEach(node => {
+                if (node.moneynode && node.owner !== 'gray') {
+                    // Find the player object whose color matches the node owner
+                    const player = Object.values(room.players).find(p => p.color === node.owner);
+                    if (player) {
+                        // Assuming player IDs are 1-indexed and correspond to the indices in the 'money' array by (id - 1)
+                        const playerIndex = player.id - 1; // Convert player ID to 0-based index
+                        if (playerIndex >= 0 && playerIndex < additionalIncome.length) {
+                            additionalIncome[playerIndex] += 1; // Add 1 income for each money node owned
+                        }
+                    }
+                }
+            });
+
+            room.gameState.money = room.gameState.money.map((m, index) => m + INCOMERATE + MONEYNODEBONUS*additionalIncome[index]);
+        }
         // Update edges
         gameState.edges.forEach(edge => {
             if (edge.flowing) {
@@ -167,9 +233,9 @@ function updateGameState(roomId) {
                     ? room.gameState.nodes.find(node => node.id === edge.from)
                     : room.gameState.nodes.find(node => node.id === edge.to);
                 if (fromNode && toNode && fromNode.size >= 5) { // Ensure at least size 5 to attack or transfer
-                    const transferAmount = Math.ceil(fromNode.size * 0.05); // Calculate 5% of the 'from' node's size, rounded up
+                    const transferAmount = Math.ceil(fromNode.size * TRANSFER); // Calculate 1% of the 'from' node's size, rounded up
                     if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
-                        if (toNode.size < 100) {
+                        if (toNode.size < MAXNODESIZE) {
                             fromNode.size -= transferAmount; // Subtract the transfer amount from the 'from' node
                             toNode.size += transferAmount; // Add the transfer amount to the 'to' node
                         }
@@ -207,7 +273,8 @@ io.on('connection', (socket) => {
         gameRooms[roomId] = {
             gameState: generateRandomGraph(),
             players: {}, // Initialize as empty; players will be added as they join
-            maxPlayers: numPlayers // Store the maximum number of players allowed
+            maxPlayers: numPlayers, // Store the maximum number of players allowed
+            tickCount: 0//
         };
 
         // Add the room creator as the first player
@@ -240,7 +307,7 @@ io.on('connection', (socket) => {
                 // Check if the room is now full
                 if (playerCount + 1 === room.maxPlayers) {
                     // Start the game loop only when the room is full
-                    room.gameLoopIntervalId = setInterval(() => updateGameState(roomId), 1000);
+                    room.gameLoopIntervalId = setInterval(() => updateGameState(roomId), 1000 / FRAMERATE);
                 }
             } else {
                 socket.emit('roomFull', roomId);
@@ -256,10 +323,56 @@ io.on('connection', (socket) => {
         if (room) {
             const player = room.players[socket.id];
             const node = room.gameState.nodes.find(node => node.id === nodeId);
-            if (node && node.owner === 'gray' && room.gameState.money[player.id-1] >= 5) {
+            if (node && node.owner === 'gray' && !node.moneynode && room.gameState.money[player.id - 1] >= NODECOST) {
                 node.owner = player.color;
-                room.gameState.money[player.id-1] -= 5;
+                room.gameState.money[player.id - 1] -= NODECOST;
                 io.to(roomId).emit('graphData', room.gameState);
+            }
+        }
+    });
+
+    socket.on('bastion', ({ roomId, nodeId }) => {
+        const room = gameRooms[roomId];
+        if (room) {
+            const player = room.players[socket.id];
+            const node = room.gameState.nodes.find(node => node.id === nodeId);
+
+            if (node && node.owner === player.color && room.gameState.money[player.id - 1] >= BASTIONCOST) {
+                node.owner = 'gray'; // Change the node's color to gray
+                node.size = 3*node.size+20; // Triple the node's size
+                room.gameState.money[player.id - 1] -= BASTIONCOST; // Subtract 5 money from the player
+                io.to(roomId).emit('graphData', room.gameState);
+                console.log('Bastion successfully activated on node ' + nodeId);
+            } else {
+                console.log('Bastion activation failed: Node not owned by player or insufficient funds');
+            }
+        }
+    });
+
+    socket.on('nuke', ({ roomId, nodeId }) => {
+        console.log('Nuke activated on node: ' + nodeId);
+        const room = gameRooms[roomId];
+        if (room) {
+            const player = room.players[socket.id];
+            const nodeIndex = room.gameState.nodes.findIndex(node => node.id === nodeId);
+
+            //check that node exists and node is not owned by the player
+            if (nodeIndex !== -1 && room.gameState.nodes[nodeIndex].owner !== player.color) {
+                //check and subtract money
+                if (room.gameState.money[player.id - 1] >= NUKECOST) {
+                    room.gameState.money[player.id - 1] -= NUKECOST;
+                    //delete node
+                    room.gameState.nodes.splice(nodeIndex, 1);
+                    //delete edges connected to node
+                    room.gameState.edges = room.gameState.edges.filter(edge => edge.from !== nodeId && edge.to !== nodeId);
+                    //send game state to everyone
+                    io.to(roomId).emit('graphData', room.gameState);
+                    console.log('Nuke successfully activated on node ' + nodeId);
+                } else {
+                    console.log('Nuke activation failed: Insufficient funds');
+                }
+            } else {
+                console.log('Nuke activation failed: Node owned by player or does not exist');
             }
         }
     });
@@ -283,7 +396,6 @@ io.on('connection', (socket) => {
     });
 
     socket.on('buildEdge', ({ roomId, from, to }) => {
-        console.log('Build edge request from node ' + from + ' to node ' + to);
         const room = gameRooms[roomId];
         if (room) {
             const player = room.players[socket.id];
@@ -291,13 +403,13 @@ io.on('connection', (socket) => {
             const toNode = room.gameState.nodes.find(node => node.id === to);
 
             // Check if the 'from' node is owned by the player and the player has enough money
-            if (fromNode && toNode && fromNode.owner === player.color && room.gameState.money[player.id - 1] >= 5) {
+            if (fromNode && toNode && fromNode.owner === player.color && room.gameState.money[player.id - 1] >= BRIDGECOST) {
                 const newEdge = { from: fromNode.id, to: toNode.id, flowing: false, twoway: false, reversed: false };
 
                 // Check if the new edge overlaps with existing edges
                 if (!doesEdgeOverlap(newEdge, room.gameState.edges, room.gameState.nodes)) {
                     room.gameState.edges.push(newEdge); // Add the new edge to the game state
-                    room.gameState.money[player.id - 1] -= 5; // Deduct the cost from the player's money
+                    room.gameState.money[player.id - 1] -= BRIDGECOST; // Deduct the cost from the player's money
 
                     // Broadcast the updated game state to all players in the room
                     io.to(roomId).emit('graphData', room.gameState);
