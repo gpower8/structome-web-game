@@ -186,11 +186,14 @@ function App() {
         const dx = toNode.x - fromNode.x;
         const dy = toNode.y - fromNode.y;
         const length = Math.sqrt(dx * dx + dy * dy);
-        const dot = (((x - fromNode.x) * dx) + ((y - fromNode.y) * dy)) / Math.pow(length, 2);
+        const dot = (((x - fromNode.x) * dx) + ((y - fromNode.y) * dy)) / (length * length);
+
+        // Ensure dot is within the range of [0, 1] to be on the line segment
+        if (dot < 0 || dot > 1) return false;
 
         const closestX = fromNode.x + (dot * dx);
         const closestY = fromNode.y + (dot * dy);
-        const distance = Math.sqrt(Math.pow(x - closestX, 2) + Math.pow(y - closestY, 2));
+        const distance = Math.sqrt((x - closestX) ** 2 + (y - closestY) ** 2);
 
         return distance < 10; // Assuming a clickable range of 10 pixels around the edge
       });
