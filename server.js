@@ -339,7 +339,7 @@ io.on('connection', (socket) => {
             const node = room.gameState.nodes.find(node => node.id === nodeId);
 
             if (node && node.owner === player.color && room.gameState.money[player.id - 1] >= BASTIONCOST) {
-                node.owner = COLORNEUTRAL; // Change the node's color to COLORNEUTRAL
+                node.owner = 'black'; // Change the node's color to not neutral so it cant be clicked
                 node.size = 3*node.size+20; // Triple the node's size
                 room.gameState.money[player.id - 1] -= BASTIONCOST; // Subtract 5 money from the player
                 io.to(roomId).emit('graphData', room.gameState);
