@@ -45,7 +45,7 @@ function App() {
   const [numPlayers, setNumPlayers] = useState<number>(2); // Default to 2 players
 
   useEffect(() => {
-    socketRef.current = io('http://localhost:3001');
+    socketRef.current = io('/');
     const socket = socketRef.current;
 
     socket.on('connect', () => console.log('Connected to the server.'));

@@ -8,11 +8,18 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000",
+        origin: process.env.CORS_ORIGIN || "http://yourapp.digitaloceanapp.com", // Replace with your Digital Ocean app's domain
         methods: ["GET", "POST"],
         allowedHeaders: ["my-custom-header"],
         credentials: true
     }
+});
+
+app.use(express.static('/workspace/client/build'));
+
+// Catch-all handler for any request that doesn't match one above, send back the index.html file
+app.get('*', (req, res) => {
+    res.sendFile('/workspace/client/build/index.html');
 });
 
 const PORT = process.env.PORT || 3001;
