@@ -25,9 +25,9 @@ const playerProperties = {
 const gameRooms = {};
 
 const FRAMERATE = 12;
-const BASTIONCOST = 25;
-const BRIDGECOST = 20;
-const NUKECOST = 50;
+const BASTIONCOST = 15;
+const BRIDGECOST = 15;
+const NUKECOST = 30;
 const NODECOST = 5;
 
 const INCOMERATE = 1;
