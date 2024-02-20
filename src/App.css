@@ -94,6 +94,30 @@
   /* Removed spacing between game info and canvas */
 }
 
+.icons-container {
+  display: flex;
+  justify-content: center;
+  /* Center the icons horizontally */
+  gap: 10px;
+  /* Adjust the space between icons */
+  margin: 10px 0;
+  /* Add some margin above and below the icon container */
+}
+
+.game-icon {
+  width: 35px;
+  /* Adjust based on your icon size */
+  height: 35px;
+  /* Adjust based on your icon size */
+  transition: box-shadow 0.3s ease;
+}
+
+.active-icon {
+  box-shadow: 0 0 0 4px red;
+  /* Big red stroke */
+  border-radius: 50%;
+  /* Optional, for rounded icons */
+}
 .canvas {
   transform: scale(0.9);
   transform-origin: top;

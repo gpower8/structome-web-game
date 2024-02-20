@@ -182,8 +182,8 @@ function App() {
               ctx.beginPath();
               ctx.moveTo(firstNode.x, firstNode.y);
               ctx.lineTo(cursorPosition.x, cursorPosition.y);
-              ctx.strokeStyle = '#000'; // Set line color
-              ctx.lineWidth = 2; // Set line width
+              ctx.strokeStyle = 'white'; // Set line color
+              ctx.lineWidth = 3; // Set line width
               ctx.stroke();
             }
           }
@@ -254,7 +254,7 @@ function App() {
         case 's':
           console.log('Bastion Mode Toggled');
           setIsBastionMode(current => !current);
-          if (isBastionMode) {
+          if (!isBastionMode) {
             setIsBridgeBuildMode(false);
             setIsNukeMode(false);
           }
@@ -262,7 +262,7 @@ function App() {
         case 'd':
           console.log('Nuke Mode Toggled');
           setIsNukeMode(current => !current);
-          if (isNukeMode) {
+          if (!isNukeMode) {
             setIsBridgeBuildMode(false);
             setIsBastionMode(false);
           }
@@ -425,6 +425,11 @@ function App() {
                 <p>Player {player.id} - Money: <span className="money-amount">${graphData.money[player.id - 1]}</span></p>
               </div>
             )}
+            <div className="icons-container">
+              <img src="/bridge.png" alt="Icon 1" className={`game-icon ${isBridgeBuildMode ? 'active-icon' : ''}`} />
+              <img src="/bastion.png" alt="Icon 2" className={`game-icon ${isBastionMode ? 'active-icon' : ''}`} />
+              <img src="/bomb.png" alt="Icon 3" className={`game-icon ${isNukeMode ? 'active-icon' : ''}`} />
+            </div>
             <button className="room-id-button" onClick={() => navigator.clipboard.writeText(roomId)}>
               Room ID: {roomId}
             </button>
