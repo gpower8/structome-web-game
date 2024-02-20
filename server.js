@@ -82,7 +82,7 @@ function generateRandomGraph() {
         }, nodesWithoutEdges[0]); // Initialize with the first node without edges
         // Mark the closest node as a money node
         closestNode.moneynode = true;
-        closestNode.size = 500;
+        closestNode.size = 800;
     }
 
     return { nodes, edges, money };
@@ -233,7 +233,7 @@ function updateGameState(roomId) {
                 const toNode = edge.reversed
                     ? room.gameState.nodes.find(node => node.id === edge.from)
                     : room.gameState.nodes.find(node => node.id === edge.to);
-                if (fromNode && toNode && fromNode.size >= 5) { // Ensure at least size 5 to attack or transfer
+                if (fromNode && toNode && fromNode.size >= 30) { // Ensure at least size 30 to attack or transfer
                     const transferAmount = Math.ceil(fromNode.size * TRANSFER); // Calculate 1% of the 'from' node's size, rounded up
                     if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
                         if (toNode.size < MAXNODESIZE) {
