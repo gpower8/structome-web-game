@@ -200,29 +200,33 @@ function updateGameState(roomId) {
 
         // Grow nodes
         gameState.nodes.forEach(node => {
-            if (node.owner !== COLORNEUTRAL && node.size < MAXNODESIZE) {
+            if (node.owner !== COLORNEUTRAL && node.owner !== 'black' && node.size < MAXNODESIZE) {
                 node.size=node.size+GROWTHRATE;
             }
         });
         // Increment money for each player
         if (room.tickCount % 12 === 0) {
             let additionalIncome = new Array(room.gameState.money.length).fill(0);
+            let nodesOwned = new Array(room.gameState.money.length).fill(0);
             // Iterate through all nodes to calculate additional income from money nodes
             room.gameState.nodes.forEach(node => {
-                if (node.moneynode && node.owner !== COLORNEUTRAL) {
+                if (node.owner !== COLORNEUTRAL && node.owner !== 'black') {
                     // Find the player object whose color matches the node owner
                     const player = Object.values(room.players).find(p => p.color === node.owner);
                     if (player) {
                         // Assuming player IDs are 1-indexed and correspond to the indices in the 'money' array by (id - 1)
                         const playerIndex = player.id - 1; // Convert player ID to 0-based index
                         if (playerIndex >= 0 && playerIndex < additionalIncome.length) {
-                            additionalIncome[playerIndex] += 1; // Add 1 income for each money node owned
+                            if (node.moneynode){
+                                additionalIncome[playerIndex] += 1; // Add 1 income for each money node owned
+                            }
+                            nodesOwned[playerIndex] += 1; //Nodes owned count
                         }
                     }
                 }
             });
 
-            room.gameState.money = room.gameState.money.map((m, index) => m + INCOMERATE + MONEYNODEBONUS*additionalIncome[index]);
+            room.gameState.money = room.gameState.money.map((m, index) => m + (nodesOwned[index] !== 0 ? INCOMERATE : 0) + MONEYNODEBONUS * additionalIncome[index]);
         }
         // Update edges
         gameState.edges.forEach(edge => {
