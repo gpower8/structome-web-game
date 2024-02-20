@@ -91,7 +91,7 @@ function App() {
       ctx.clearRect(0, 0, WIDTH, HEIGHT);
 
       // Set the background color
-      ctx.fillStyle = 'white';
+      ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; // 50% transparent white
       ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
       // Draw nodes
@@ -105,7 +105,7 @@ function App() {
         ctx.stroke();
         if (node.moneynode) {
           ctx.lineWidth = 7; // Set the stroke thickness to 5 pixels (or any other desired thickness)
-          ctx.strokeStyle = '003300';
+          ctx.strokeStyle = 'LightGrey';
           ctx.stroke(); // Apply the thicker stroke to the path (triangle in this context)
           ctx.lineWidth = 1; // Reset lineWidth back to 1 (or your default value) to avoid affecting other drawings
         }
@@ -156,8 +156,8 @@ function App() {
             ctx.fill();
 
             if (edge.twoway) {
-              ctx.lineWidth = 1; // Set the stroke thickness to 5 pixels (or any other desired thickness)
-              ctx.strokeStyle = 'black';
+              ctx.lineWidth = 2; // Set the stroke thickness to 5 pixels (or any other desired thickness)
+              ctx.strokeStyle = 'orange';
               ctx.stroke(); // Apply the thicker stroke to the path (triangle in this context)
               ctx.lineWidth = 1; // Reset lineWidth back to 1 (or your default value) to avoid affecting other drawings
             }
@@ -361,36 +361,57 @@ function App() {
   }, [graphData, roomId, isBridgeBuildMode, isNukeMode, isBastionMode]); // Re-run when graphData or roomId changes
 
   return (
-    <div className="App" style={{ backgroundColor: 'gray', display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+    <div className="App" style={{
+      display: 'flex',
+      flexDirection: 'column',
+      alignItems: 'center',
+      height: '100vh', // Ensure the div takes full viewport height
+      backgroundImage: roomId ? `url('/structomebg.png')` : `url('/menuscreen.gif')`, // Set the background image conditionally based on roomId      backgroundSize: 'cover', // Cover the entire div with the background image
+      backgroundPosition: 'center', // Center the background image
+      backgroundSize: 'cover', // Stretch the image to cover the entire div
+      backgroundRepeat: 'no-repeat', // Do not repeat the background image
+    }}>
       {!roomId && (
-        <div>
-          <select value={numPlayers} onChange={(e) => setNumPlayers(Number(e.target.value))}>
+        <div className="menu">
+          <img src="/menutext.gif" alt="Logo" className="menu-logo" />
+          <select className="menu-select" value={numPlayers} onChange={(e) => setNumPlayers(Number(e.target.value))}>
             {[2, 3, 4, 5].map((value) => (
               <option key={value} value={value}>
                 {value} Players
               </option>
             ))}
           </select>
-          <button onClick={() => createRoom(numPlayers)}>Create Room</button>
+          <button className="menu-button" onClick={() => createRoom(numPlayers)}>Create Room</button>
           <input
+            className="menu-input"
             type="text"
             placeholder="Room ID"
-            onKeyDown={(e) => {
+            onKeyPress={(e) => {
+              const target = e.target as HTMLInputElement;
               if (e.key === 'Enter') {
-                joinRoom((e.target as HTMLInputElement).value);
+                joinRoom(target.value);
               }
             }}
           />
+          <button className="menu-button" onClick={() => {
+            const inputElement = document.querySelector('.menu-input') as HTMLInputElement;
+            if (inputElement && inputElement.value) {
+              joinRoom(inputElement.value);
+            }
+          }}>Join Room</button>
         </div>
       )}
       {roomId && (
-        <div>
-          <p>Room ID: {roomId}</p>
-          {/* Display only the current player's money */}
-          <div className="money-display">
+        <div className="game-container">
+          <div className="game-info">
             {player && (
-              <p>Player {player.id}'s Money: {graphData.money[player.id - 1]}</p>
+              <div className="player-money">
+                <p>Player {player.id} - Money: <span className="money-amount">${graphData.money[player.id - 1]}</span></p>
+              </div>
             )}
+            <button className="room-id-button" onClick={() => navigator.clipboard.writeText(roomId)}>
+              Room ID: {roomId}
+            </button>
           </div>
           <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="canvas" />
         </div>

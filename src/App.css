@@ -28,6 +28,115 @@
   color: #61dafb;
 }
 
+.menu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 20px;
+  /* Space between elements */
+}
+
+.menu-select,
+.menu-input,
+.menu-button {
+  font-size: 1.25rem;
+  /* Larger font size */
+  padding: 10px;
+  /* More padding for a larger appearance */
+  border-radius: 5px;
+  /* Rounded corners */
+}
+
+.game-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  height: 100vh;
+  margin-top: -21px;
+  /* Move up the container if needed */
+}
+
+.menu-button {
+  background-color: #4CAF50;
+  /* A pleasant green */
+  color: white;
+  border: none;
+  cursor: pointer;
+  transition: background-color 0.3s;
+}
+
+.menu-button:hover {
+  background-color: #45a049;
+}
+
+.menu-input {
+  border: 1px solid #ccc;
+}
+
+.menu-logo {
+  max-width: 100%;
+  /* Ensures the image is responsive and doesn't overflow */
+  height: auto;
+  /* Maintains aspect ratio */
+  margin-bottom: 20px;
+  /* Space between the logo and the form elements */
+}
+/*in the game screen text*/
+
+
+.game-info {
+  display: flex;
+  justify-content: space-evenly;
+  align-items: center;
+  width: 100%;
+  margin-bottom: -20px;
+  /* Removed spacing between game info and canvas */
+}
+
+.room-id-button {
+  background-color: #f0f0f0;
+  padding: 5px 10px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  font-size: 1.25rem;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.room-id-button {
+  cursor: pointer;
+  border: none;
+  transition: background-color 0.3s ease;
+}
+
+.room-id-button:hover {
+  background-color: #e0e0e0;
+}
+
+.player-money {
+  color: white;
+  font-weight: bold;
+  font-size: 1.75rem;
+  /* Smaller font size for the surrounding text */
+  display: flex;
+  align-items: center;
+  margin-top: 0;
+  /* Vertically center the text and the money amount */
+}
+
+
+.money-amount {
+  color: yellow;
+  -webkit-text-stroke: 1px rgb(255, 255, 255);
+  /* Stroke effect for Webkit browsers */
+  /* Standard syntax, may not be supported everywhere */
+  font-size: 2rem;
+  /* Larger font size for the money amount */
+  margin-left: 5px;
+  margin-bottom: 0px;
+  /* Spacing between text and amount */
+}
+
 @keyframes App-logo-spin {
   from {
     transform: rotate(0deg);

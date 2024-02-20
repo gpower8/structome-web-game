@@ -35,6 +35,7 @@ const MONEYNODEBONUS = 1;
 const MAXNODESIZE = 800;
 const TRANSFER = 0.01;
 const GROWTHRATE = 1;
+const COLORNEUTRAL = 'white';
 
 function generateRandomGraph() {
     const nodes = [], edges = [];
@@ -51,7 +52,7 @@ function generateRandomGraph() {
                 x: (Math.random() * 1560)+20, //changed math so node isnt on edge of screen
                 y: (Math.random() * 860)+20,
                 size: 1,
-                owner: 'gray',
+                owner: COLORNEUTRAL,
                 moneynode: false
             };
         } while (nodes.some(node => getDistance(newNode, node) < minDistance));
@@ -199,7 +200,7 @@ function updateGameState(roomId) {
 
         // Grow nodes
         gameState.nodes.forEach(node => {
-            if (node.owner !== 'gray' && node.size < MAXNODESIZE) {
+            if (node.owner !== COLORNEUTRAL && node.size < MAXNODESIZE) {
                 node.size=node.size+GROWTHRATE;
             }
         });
@@ -208,7 +209,7 @@ function updateGameState(roomId) {
             let additionalIncome = new Array(room.gameState.money.length).fill(0);
             // Iterate through all nodes to calculate additional income from money nodes
             room.gameState.nodes.forEach(node => {
-                if (node.moneynode && node.owner !== 'gray') {
+                if (node.moneynode && node.owner !== COLORNEUTRAL) {
                     // Find the player object whose color matches the node owner
                     const player = Object.values(room.players).find(p => p.color === node.owner);
                     if (player) {
@@ -263,7 +264,7 @@ io.on('connection', (socket) => {
     console.log('A user connected');
 
     socket.on('createRoom', (numPlayers) => {
-        const roomId = crypto.randomBytes(4).toString('hex');
+        const roomId = crypto.randomBytes(2).toString('hex');
 
         if (numPlayers > playerProperties.ids.length) {
             socket.emit('error', 'Maximum number of players exceeded');
@@ -323,7 +324,7 @@ io.on('connection', (socket) => {
         if (room) {
             const player = room.players[socket.id];
             const node = room.gameState.nodes.find(node => node.id === nodeId);
-            if (node && node.owner === 'gray' && !node.moneynode && room.gameState.money[player.id - 1] >= NODECOST) {
+            if (node && node.owner === COLORNEUTRAL && !node.moneynode && room.gameState.money[player.id - 1] >= NODECOST) {
                 node.owner = player.color;
                 room.gameState.money[player.id - 1] -= NODECOST;
                 io.to(roomId).emit('graphData', room.gameState);
@@ -338,7 +339,7 @@ io.on('connection', (socket) => {
             const node = room.gameState.nodes.find(node => node.id === nodeId);
 
             if (node && node.owner === player.color && room.gameState.money[player.id - 1] >= BASTIONCOST) {
-                node.owner = 'gray'; // Change the node's color to gray
+                node.owner = COLORNEUTRAL; // Change the node's color to COLORNEUTRAL
                 node.size = 3*node.size+20; // Triple the node's size
                 room.gameState.money[player.id - 1] -= BASTIONCOST; // Subtract 5 money from the player
                 io.to(roomId).emit('graphData', room.gameState);
