@@ -369,7 +369,7 @@ io.on('connection', (socket) => {
             const nodeIndex = room.gameState.nodes.findIndex(node => node.id === nodeId);
 
             //check that node exists and node is not owned by the player
-            if (nodeIndex !== -1 && room.gameState.nodes[nodeIndex].owner !== player.color) {
+            if (nodeIndex !== -1 && room.gameState.nodes[nodeIndex].owner !== player.color && !room.gameState.nodes[nodeIndex].moneynode) {
                 //check and subtract money
                 if (room.gameState.money[player.id - 1] >= NUKECOST) {
                     room.gameState.money[player.id - 1] -= NUKECOST;
