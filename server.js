@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 8080;
 
 const playerProperties = {
     ids: [1, 2, 3, 4, 5],
-    colors: ["blue", "red", "green", "purple", "yellow"] // Add more colors for additional players
+    colors: ["lightblue", "red", "green", "purple", "yellow"] // Add more colors for additional players
 };
 
 const gameRooms = {};
