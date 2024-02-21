@@ -15,11 +15,11 @@ const io = new Server(server, {
     }
 });
 
-app.use(express.static('/workspace/client/build'));
+app.use(express.static(path.join(__dirname, 'client', 'build')));
 
 // Catch-all handler for any request that doesn't match one above, send back the index.html file
 app.get('*', (req, res) => {
-    res.sendFile('/workspace/client/build/index.html');
+    res.sendFile(path.join(__dirname, 'client', 'build', 'index.html'));
 });
 
 const PORT = process.env.PORT || 8080;
