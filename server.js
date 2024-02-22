@@ -8,7 +8,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: process.env.CORS_ORIGIN || "https://structome-mfbi2.ondigitalocean.app/", // Replace with your Digital Ocean app's domain
+        origin: process.env.CORS_ORIGIN || "https://structome-mfbi2.ondigitalocean.app/", //app domain
         methods: ["GET", "POST"],
         allowedHeaders: ["my-custom-header"],
         credentials: true
@@ -17,7 +17,7 @@ const io = new Server(server, {
 
 app.use(express.static('/workspace/build'));
 
-// Catch-all handler for any request that doesn't match one above, send back the index.html file
+// catch-all handler for any request that doesn't match one above, send back the index.html file
 app.get('*', (req, res) => {
     res.sendFile('/workspace/build/index.html');
 });
@@ -26,7 +26,7 @@ const PORT = process.env.PORT || 8080;
 
 const playerProperties = {
     ids: [1, 2, 3, 4, 5],
-    colors: ["aqua", "red", "chartreuse", "blueviolet", "yellow"] // Add more colors for additional players
+    colors: ["aqua", "red", "chartreuse", "blueviolet", "yellow"] // colors for players
 };
 
 const gameRooms = {};
@@ -48,7 +48,7 @@ function generateRandomGraph() {
     const nodes = [], edges = [];
     const numNodes = 50, minDistance = 90, money = [5, 5, 5, 5, 5];
     
-    const centerX = 1560 / 2 + 20; //Find middle of the screen
+    const centerX = 1560 / 2 + 20; //finds middle of the screen
     const centerY = 860 / 2 + 20;
     
     for (let i = 0; i < numNodes; i++) {
@@ -62,7 +62,7 @@ function generateRandomGraph() {
                 owner: COLORNEUTRAL,
                 moneynode: false
             };
-        } while (nodes.some(node => getDistance(newNode, node) < minDistance));
+        } while (nodes.some(node => getDistance(newNode, node) < minDistance)); //choose most central node without edges
         nodes.push(newNode);
     }
 
@@ -86,8 +86,8 @@ function generateRandomGraph() {
             const distToCenter = getDistance({ x: centerX, y: centerY }, node);
             const closestDistToCenter = getDistance({ x: centerX, y: centerY }, closest);
             return distToCenter < closestDistToCenter ? node : closest;
-        }, nodesWithoutEdges[0]); // Initialize with the first node without edges
-        // Mark the closest node as a money node
+        }, nodesWithoutEdges[0]); // initialize with the first node without edges
+        // mark the closest node as a money node
         closestNode.moneynode = true;
         closestNode.size = 800;
     }
@@ -122,7 +122,7 @@ function pointToLineDistance(point, lineStart, lineEnd) {
 }
 
 function doLinesIntersect(p1, q1, p2, q2) {
-    // Extracting coordinates from the points
+    // get coordinates from the points
     const x1 = p1.x, y1 = p1.y, x2 = q1.x, y2 = q1.y;
     const x3 = p2.x, y3 = p2.y, x4 = q2.x, y4 = q2.y;
 
