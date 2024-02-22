@@ -126,12 +126,12 @@ function doLinesIntersect(p1, q1, p2, q2) {
     const x1 = p1.x, y1 = p1.y, x2 = q1.x, y2 = q1.y;
     const x3 = p2.x, y3 = p2.y, x4 = q2.x, y4 = q2.y;
 
-    // Check for zero-length lines
+    // check for zero length lines
     if ((x1 === x2 && y1 === y2) || (x3 === x4 && y3 === y4)) {
         return false;
     }
 
-    // Check for shared endpoints (connected at a node)
+    // check that there isnt already an edge between these two nodes
     if ((x1 === x3 && y1 === y3) || (x1 === x4 && y1 === y4) ||
         (x2 === x3 && y2 === y3) || (x2 === x4 && y2 === y4)) {
         return false;
@@ -139,7 +139,7 @@ function doLinesIntersect(p1, q1, p2, q2) {
 
     const denominator = ((y4 - y3) * (x2 - x1) - (x4 - x3) * (y2 - y1));
 
-    // Lines are parallel
+    // lines are parrallel
     if (denominator === 0) {
         return false;
     }
@@ -147,12 +147,12 @@ function doLinesIntersect(p1, q1, p2, q2) {
     let ua = ((x4 - x3) * (y1 - y3) - (y4 - y3) * (x1 - x3)) / denominator;
     let ub = ((x2 - x1) * (y1 - y3) - (y2 - y1) * (x1 - x3)) / denominator;
 
-    // Check if the intersection is along the segments (excluding endpoints)
+    // check if the intersection is along the segments (excluding endpoints)
     if (ua <= 0 || ua >= 1 || ub <= 0 || ub >= 1) {
         return false;
     }
 
-    // If we reach here, lines intersect (not at endpoints)
+    // if we reach here, lines intersect (not at endpoints)
     return true;
 }
 
