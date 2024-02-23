@@ -253,7 +253,7 @@ function updateGameState(roomId) {
                         }
                     } else {
                         fromNode.size -= transferAmount; // Subtract the transfer amount for the attack
-                        toNode.size -= transferAmount; // The 'to' node also loses the transfer amount in the fight
+                        toNode.size -= transferAmount*2; // (Double damage mode) The 'to' node also loses the transfer amount in the fight
 
                         if (toNode.size <= 0) {
                             toNode.owner = fromNode.owner; // Switch the color of the node if 'to' node's size drops to 0 or below
@@ -351,7 +351,7 @@ io.on('connection', (socket) => {
 
             if (node && node.owner === player.color && room.gameState.money[player.id - 1] >= BASTIONCOST) {
                 node.owner = 'black'; // Change the node's color to not neutral so it cant be clicked
-                node.size = 3*node.size+20; // Triple the node's size
+                node.size = 3*node.size+50; // Triple the node's size
                 room.gameState.money[player.id - 1] -= BASTIONCOST; // Subtract 5 money from the player
                 io.to(roomId).emit('graphData', room.gameState);
                 console.log('Bastion successfully activated on node ' + nodeId);
