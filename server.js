@@ -264,7 +264,7 @@ function updateGameState(roomId) {
             }
         });
 
-        // Broadcast the updated game state to all clients in the room
+        // broadcast the updated game state to all clients in the room
         io.to(roomId).emit('graphData', gameState);
         //console.log(gameState);
     }
@@ -284,19 +284,19 @@ io.on('connection', (socket) => {
 
         gameRooms[roomId] = {
             gameState: generateRandomGraph(),
-            players: {}, // Initialize as empty; players will be added as they join
-            maxPlayers: numPlayers, // Store the maximum number of players allowed
-            tickCount: 0//
+            players: {}, // initialize as empty; players will be added as they join
+            maxPlayers: numPlayers, // store the maximum number of players allowed
+            tickCount: 0
         };
 
-        // Add the room creator as the first player
+        // add the room creator as the first player
         gameRooms[roomId].players[socket.id] = {
             id: playerProperties.ids[0],
             color: playerProperties.colors[0]
         };
 
         socket.join(roomId);
-        // Emit room creation confirmation along with player info
+        // emit room creation confirmation along with player info
         socket.emit('roomCreated', { roomId, playerInfo: gameRooms[roomId].players[socket.id] });
 
     });
@@ -316,9 +316,9 @@ io.on('connection', (socket) => {
                 socket.emit('playerInfo', room.players[socket.id]);
                 io.to(roomId).emit('graphData', room.gameState);
 
-                // Check if the room is now full
+                // check if the room is now full
                 if (playerCount + 1 === room.maxPlayers) {
-                    // Start the game loop only when the room is full
+                    // start the game loop only when the room is full
                     room.gameLoopIntervalId = setInterval(() => updateGameState(roomId), 1000 / FRAMERATE);
                 }
             } else {
