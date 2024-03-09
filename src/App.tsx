@@ -5,6 +5,9 @@ import './App.css';
 const WIDTH = 1600;
 const HEIGHT = 900;
 
+//sound effect
+const splinterCellAudio = new Audio('/splintercell.mp3');
+
 var texture = new Image();
 texture.src = 'texture.png';
 
@@ -43,6 +46,18 @@ function App() {
   const [roomId, setRoomId] = useState<string | null>(null);
   const [player, setPlayer] = useState<Player | null>(null);
   const [numPlayers, setNumPlayers] = useState<number>(2); // Default to 2 players
+
+  const backgroundMusicRef = useRef(new Audio('/soundtrack.mp3'));
+
+  //Background music
+  useEffect(() => {
+    backgroundMusicRef.current.play();
+    backgroundMusicRef.current.loop = true; // Loop the background music
+
+    return () => {
+      backgroundMusicRef.current.pause();
+    };
+  }, []);
 
   useEffect(() => {
     socketRef.current = io('/');
@@ -314,6 +329,7 @@ function App() {
       });
 
       if (clickedNode) {
+        splinterCellAudio.play();
         if(isBridgeBuildMode){
           console.log('node clicked in bridge mode');
           if (!firstNode) {
