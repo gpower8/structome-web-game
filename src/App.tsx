@@ -47,8 +47,9 @@ function App() {
   const [player, setPlayer] = useState<Player | null>(null);
   const [numPlayers, setNumPlayers] = useState<number>(2); // Default to 2 players
 
-  new Audio('/soundtrack.mp3').play();
-
+  useEffect(() => {
+    new Audio('/soundtrack.mp3').play();
+  }, []);
   useEffect(() => {
     socketRef.current = io('/');
     const socket = socketRef.current;
