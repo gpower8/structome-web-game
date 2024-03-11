@@ -284,7 +284,7 @@ io.on('connection', (socket) => {
 
         gameRooms[roomId] = {
             gameState: generateRandomGraph(),
-            players: {}, // initialize as empty; players will be added as they join
+            players: {}, // initialize as empty and players will be added as they join
             maxPlayers: numPlayers, // store the maximum number of players allowed
             tickCount: 0
         };
