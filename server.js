@@ -89,7 +89,7 @@ function generateRandomGraph() {
         }, nodesWithoutEdges[0]); // initialize with the first node without edges
         // mark the closest node as a money node
         closestNode.moneynode = true;
-        closestNode.size = 1400;
+        closestNode.size = 1600;
     }
 
     return { nodes, edges, money };
