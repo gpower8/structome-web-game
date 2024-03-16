@@ -34,7 +34,7 @@ const gameRooms = {};
 const FRAMERATE = 12;
 const BASTIONCOST = 15;
 const BRIDGECOST = 15;
-const NUKECOST = 30;
+const NUKECOST = 40;
 const NODECOST = 5;
 
 const INCOMERATE = 1;
