@@ -89,7 +89,7 @@ function generateRandomGraph() {
         }, nodesWithoutEdges[0]); // initialize with the first node without edges
         // mark the closest node as a money node
         closestNode.moneynode = true;
-        closestNode.size = 800;
+        closestNode.size = 1400;
     }
 
     return { nodes, edges, money };
@@ -351,7 +351,7 @@ io.on('connection', (socket) => {
 
             if (node && node.owner === player.color && room.gameState.money[player.id - 1] >= BASTIONCOST) {
                 node.owner = 'black'; // Change the node's color to not neutral so it cant be clicked
-                node.size = 3*node.size+50; // Triple the node's size
+                node.size = 4*node.size+200; // Triple the node's size
                 room.gameState.money[player.id - 1] -= BASTIONCOST; // Subtract 5 money from the player
                 io.to(roomId).emit('graphData', room.gameState);
                 console.log('Bastion successfully activated on node ' + nodeId);
