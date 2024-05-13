@@ -33,10 +33,22 @@ interface GraphData {
   edges: Edge[];
   money: number[];
 }
-
+//Ability selector stuff:
 interface Player {
   id: number;
   color: string;
+}
+
+interface Ability {
+  id: number;
+  name: string;
+  icon: string;
+}
+
+interface AbilitySelectorProps {
+  abilities: Ability[];
+  selectedAbilities: number[];
+  setSelectedAbilities: React.Dispatch<React.SetStateAction<number[]>>;
 }
 
 function App() {
@@ -47,11 +59,45 @@ function App() {
   const [player, setPlayer] = useState<Player | null>(null);
   const [numPlayers, setNumPlayers] = useState<number>(2); // Default to 2 players
 
+  const abilities = [
+    { id: 1, name: 'Bridge Build', icon: '/bridge.png' },
+    { id: 2, name: 'Bastion', icon: '/bastion.png' },
+    { id: 3, name: 'Nuke', icon: '/bomb.png' },
+    //{ id: 4, name: 'Teleport', icon: '/teleport.png' }
+  ];
+
+  const [selectedAbilities, setSelectedAbilities] = useState<number[]>([]);
+
+  const AbilitySelector: React.FC<AbilitySelectorProps> = ({ abilities, selectedAbilities, setSelectedAbilities }) => {
+    const toggleAbility = (ability: Ability) => {
+      if (selectedAbilities.includes(ability.id)) {
+        setSelectedAbilities(selectedAbilities.filter(id => id !== ability.id));
+      } else if (selectedAbilities.length < 4) {
+        setSelectedAbilities([...selectedAbilities, ability.id]);
+      }
+    };
+
+    return (
+      <div className="abilities-container">
+        {abilities.map(ability => (
+          <div key={ability.id} className={`ability-item ${selectedAbilities.includes(ability.id) ? 'selected' : ''}`}
+            onClick={() => toggleAbility(ability)}>
+            <img src={ability.icon} alt={ability.name} />
+            <p>{ability.name}</p>
+          </div>
+        ))}
+      </div>
+    );
+  };
+
+
+  
+
   useEffect(() => {
     new Audio('/soundtrack.mp3').play();
   }, []);
   useEffect(() => {
-    socketRef.current = io('/');
+    socketRef.current = io('http://localhost:3001');
     const socket = socketRef.current;
 
     socket.on('connect', () => console.log('Connected to the server.'));
@@ -397,6 +443,11 @@ function App() {
       {!roomId && (
         <div className="menu">
           <img src="/menutext.gif" alt="Logo" className="menu-logo" />
+          <AbilitySelector
+            abilities={abilities}
+            selectedAbilities={selectedAbilities}
+            setSelectedAbilities={setSelectedAbilities}
+          />
           <select className="menu-select" value={numPlayers} onChange={(e) => setNumPlayers(Number(e.target.value))}>
             {[2, 3, 4, 5].map((value) => (
               <option key={value} value={value}>
