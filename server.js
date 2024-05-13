@@ -8,7 +8,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: process.env.CORS_ORIGIN || "https://structome-mfbi2.ondigitalocean.app/", //app domain
+        origin: "http://localhost:3000", //app domain
         methods: ["GET", "POST"],
         allowedHeaders: ["my-custom-header"],
         credentials: true
@@ -22,7 +22,7 @@ app.get('*', (req, res) => {
     res.sendFile('/workspace/build/index.html');
 });
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3001;
 
 const playerProperties = {
     ids: [1, 2, 3, 4, 5],
