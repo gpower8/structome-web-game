@@ -66,13 +66,13 @@ function App() {
     //{ id: 4, name: 'Teleport', icon: '/teleport.png' }
   ];
 
-  const [selectedAbilities, setSelectedAbilities] = useState<number[]>([]);
+  const [selectedAbilities, setSelectedAbilities] = useState<number[]>([1, 2, 3]);
 
   const AbilitySelector: React.FC<AbilitySelectorProps> = ({ abilities, selectedAbilities, setSelectedAbilities }) => {
     const toggleAbility = (ability: Ability) => {
       if (selectedAbilities.includes(ability.id)) {
         setSelectedAbilities(selectedAbilities.filter(id => id !== ability.id));
-      } else if (selectedAbilities.length < 2) {
+      } else if (selectedAbilities.length < 3) { //Number of abilities you can select
         setSelectedAbilities([...selectedAbilities, ability.id]);
       }
     };
@@ -86,8 +86,13 @@ function App() {
       <div>
         <div className="abilities-container">
           {abilities.map(ability => (
-            <div key={ability.id} className={`ability-item ${selectedAbilities.includes(ability.id) ? 'selected' : ''}`}
-              onClick={() => toggleAbility(ability)}>
+            <div key={ability.id}
+              className={`ability-item ${selectedAbilities.includes(ability.id) ? 'selected' : ''}`}
+              onClick={() => toggleAbility(ability)}
+              style={{
+                border: selectedAbilities.includes(ability.id) ? '5px solid black' : 'none', // Apply border if selected
+                padding: '5px' // Add padding to prevent image from sticking to the border
+              }}>
               <img src={ability.icon} alt={ability.name} style={{ width: '100px', height: '100px' }} />
               <p>{ability.name}</p>
             </div>
@@ -97,7 +102,8 @@ function App() {
         <p>Selected Abilities: {selectedAbilitiesNames}</p>
       </div>
     );
-  }
+  };
+
 
 
 
@@ -306,27 +312,42 @@ function App() {
       switch (event.key) {
         case 'a':
           console.log('Bridge Build Mode Toggled');
-          setIsBridgeBuildMode(current => !current);
-          setFirstNode(null); // Reset first node selection
-          if (!isBridgeBuildMode) {
-            setIsBastionMode(false);
-            setIsNukeMode(false);
+          // Check if Bridge Build ability is selected before toggling
+          if (selectedAbilities.includes(1)) { // Assuming 1 is the ID for Bridge Build
+            setIsBridgeBuildMode(current => !current);
+            setFirstNode(null); // Reset first node selection
+            if (!isBridgeBuildMode) {
+              setIsBastionMode(false);
+              setIsNukeMode(false);
+            }
+          } else {
+            console.log("Bridge Build ability not selected.");
           }
           break;
         case 's':
           console.log('Bastion Mode Toggled');
-          setIsBastionMode(current => !current);
-          if (!isBastionMode) {
-            setIsBridgeBuildMode(false);
-            setIsNukeMode(false);
+          // Check if Bastion ability is selected before toggling
+          if (selectedAbilities.includes(2)) { // Assuming 2 is the ID for Bastion
+            setIsBastionMode(current => !current);
+            if (!isBastionMode) {
+              setIsBridgeBuildMode(false);
+              setIsNukeMode(false);
+            }
+          } else {
+            console.log("Bastion ability not selected.");
           }
           break;
         case 'd':
           console.log('Nuke Mode Toggled');
-          setIsNukeMode(current => !current);
-          if (!isNukeMode) {
-            setIsBridgeBuildMode(false);
-            setIsBastionMode(false);
+          // Check if Nuke ability is selected before toggling
+          if (selectedAbilities.includes(3)) { // Assuming 3 is the ID for Nuke
+            setIsNukeMode(current => !current);
+            if (!isNukeMode) {
+              setIsBridgeBuildMode(false);
+              setIsBastionMode(false);
+            }
+          } else {
+            console.log("Nuke ability not selected.");
           }
           break;
         default:
@@ -339,7 +360,8 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [isBridgeBuildMode, isBastionMode, isNukeMode]);
+  }, [selectedAbilities, isBridgeBuildMode, isBastionMode, isNukeMode]); // Added dependencies here
+
 
   useEffect(() => { //Cursor Track Helper
     const canvas = canvasRef.current;
@@ -494,9 +516,12 @@ function App() {
               </div>
             )}
             <div className="icons-container">
-              <img src="/bridge.png" alt="Icon 1" className={`game-icon ${isBridgeBuildMode ? 'active-icon' : ''}`} />
-              <img src="/bastion.png" alt="Icon 2" className={`game-icon ${isBastionMode ? 'active-icon' : ''}`} />
-              <img src="/bomb.png" alt="Icon 3" className={`game-icon ${isNukeMode ? 'active-icon' : ''}`} />
+              {selectedAbilities.includes(1) &&
+                <img src="/bridge.png" alt="Bridge Icon" className={`game-icon ${isBridgeBuildMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(2) &&
+                <img src="/bastion.png" alt="Bastion Icon" className={`game-icon ${isBastionMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(3) &&
+                <img src="/bomb.png" alt="Nuke Icon" className={`game-icon ${isNukeMode ? 'active-icon' : ''}`} />}
             </div>
             <button className="room-id-button" onClick={() => navigator.clipboard.writeText(roomId)}>
               Room ID: {roomId}
@@ -505,6 +530,7 @@ function App() {
           <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="canvas" />
         </div>
       )}
+
     </div>
   );
 }
