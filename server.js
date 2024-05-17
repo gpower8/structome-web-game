@@ -407,6 +407,29 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('freezeEdge', ({ roomId, edgeId }) => {
+        console.log('edge freeze request: ' + edgeId);
+        const room = gameRooms[roomId];
+        if (room) {
+            const edge = room.gameState.edges.find(edge => `${edge.from}-${edge.to}` === edgeId);
+            const currentPlayer = room.players[socket.id];
+            const fromNode = edge.reversed ? room.gameState.nodes.find(node => node.id === edge.to)
+                : room.gameState.nodes.find(node => node.id === edge.from);
+            if (edge && edge.twoway && fromNode && fromNode.owner === currentPlayer.color) {
+                if (room.gameState.money[currentPlayer.id - 1] >= 15) { //money check
+                    edge.twoway = false;
+                    room.gameState.money[currentPlayer.id - 1] -= 15;
+                    io.to(roomId).emit('graphData', room.gameState);
+                    console.log(`Edge ${edgeId} frozen successfully.`);
+                } else {
+                    console.log('Freeze action failed: Insufficient funds'); //can maybe delete error messages at some point
+                }
+            } else {
+                console.log('Freeze action failed: Edge does not exist or is not two-way');
+            }
+        }
+    });
+
     socket.on('buildEdge', ({ roomId, from, to }) => {
         const room = gameRooms[roomId];
         if (room) {

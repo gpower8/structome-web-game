@@ -59,11 +59,16 @@ function App() {
   const [player, setPlayer] = useState<Player | null>(null);
   const [numPlayers, setNumPlayers] = useState<number>(2); // Default to 2 players
 
+  //Ability ID's
   const abilities = [
     { id: 1, name: 'Bridge Build', icon: '/bridge.png' },
     { id: 2, name: 'Bastion', icon: '/bastion.png' },
     { id: 3, name: 'Nuke', icon: '/bomb.png' },
-    //{ id: 4, name: 'Teleport', icon: '/teleport.png' }
+    { id: 4, name: 'Freeze', icon: '/freeze.png' },
+    { id: 5, name: 'Two-Way Bridge', icon: '/twoway.png' },
+    { id: 6, name: 'Rage', icon: '/rage.png' },
+    { id: 7, name: 'Poison', icon: '/poison.png' },
+    { id: 8, name: 'Cannon', icon: '/cannon.png' }
   ];
 
   const [selectedAbilities, setSelectedAbilities] = useState<number[]>([1, 2, 3]);
@@ -142,14 +147,19 @@ function App() {
     socketRef.current?.emit('joinRoom', id);
     setRoomId(id);
   };
-  //bridge build mode
-  const [isBridgeBuildMode, setIsBridgeBuildMode] = useState(false);
+
   const [firstNode, setFirstNode] = useState<Node | null>(null);
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
 
-  //nuke and bastion
+  //Ability Modes
+  const [isBridgeBuildMode, setIsBridgeBuildMode] = useState(false);
   const [isBastionMode, setIsBastionMode] = useState(false);
   const [isNukeMode, setIsNukeMode] = useState(false);
+  const [isFreezeMode, setIsFreezeMode] = useState(false);
+  const [isTwoWayBridgeMode, setIsTwoWayBridgeMode] = useState(false);
+  const [isRageMode, setIsRageMode] = useState(false);
+  const [isPoisonMode, setIsPoisonMode] = useState(false);
+  const [isCannonMode, setIsCannonMode] = useState(false);
 
   useEffect(() => { //Main drawing canvas useEffect
     const canvas = canvasRef.current;
@@ -313,7 +323,7 @@ function App() {
         case 'a':
           console.log('Bridge Build Mode Toggled');
           // Check if Bridge Build ability is selected before toggling
-          if (selectedAbilities.includes(1)) { // Assuming 1 is the ID for Bridge Build
+          if (selectedAbilities.includes(1)) { //Check if ability was selected in menu
             setIsBridgeBuildMode(current => !current);
             setFirstNode(null); // Reset first node selection
             if (!isBridgeBuildMode) {
@@ -326,28 +336,33 @@ function App() {
           break;
         case 's':
           console.log('Bastion Mode Toggled');
-          // Check if Bastion ability is selected before toggling
-          if (selectedAbilities.includes(2)) { // Assuming 2 is the ID for Bastion
+          if (selectedAbilities.includes(2)) { 
             setIsBastionMode(current => !current);
             if (!isBastionMode) {
               setIsBridgeBuildMode(false);
               setIsNukeMode(false);
             }
-          } else {
-            console.log("Bastion ability not selected.");
           }
           break;
         case 'd':
           console.log('Nuke Mode Toggled');
           // Check if Nuke ability is selected before toggling
-          if (selectedAbilities.includes(3)) { // Assuming 3 is the ID for Nuke
+          if (selectedAbilities.includes(3)) { //3 is the ID for Nuke
             setIsNukeMode(current => !current);
             if (!isNukeMode) {
               setIsBridgeBuildMode(false);
               setIsBastionMode(false);
             }
-          } else {
-            console.log("Nuke ability not selected.");
+          }
+          break;
+        case 'f':
+          console.log('Freeze Mode Toggled');
+          if (selectedAbilities.includes(4)) {
+            setIsFreezeMode(current => !current);
+            if (!setIsFreezeMode) {
+              setIsBridgeBuildMode(false);
+              setIsBastionMode(false);
+            }
           }
           break;
         default:
@@ -449,8 +464,13 @@ function App() {
         });
 
         if (clickedEdge) {
-          console.log('Edge Clicked');
-          socketRef.current?.emit('updateEdgeFlowing', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`, flowing: !clickedEdge.flowing });
+          if (isFreezeMode){
+            console.log('Edge Clicked With Freeze');
+            socketRef.current?.emit('freezeEdge', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`});
+          } else {
+            console.log('Edge Clicked');
+            socketRef.current?.emit('updateEdgeFlowing', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`, flowing: !clickedEdge.flowing });
+          }
         }
       };
       }
