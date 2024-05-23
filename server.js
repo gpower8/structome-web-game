@@ -244,6 +244,11 @@ function updateGameState(roomId) {
             room.gameState.money = room.gameState.money.map((m, index) => m + (nodesOwned[index] !== 0 ? INCOMERATE : 0) + MONEYNODEBONUS * additionalIncome[index]);
         }
         // Update edges
+        const originalSizes = new Map(); //stored original node sizes for calculations
+        gameState.nodes.forEach(node => {
+            originalSizes.set(node.id, node.size);
+        });
+
         gameState.edges.forEach(edge => {
             if (edge.flowing) {
                 const fromNode = edge.reversed
@@ -252,8 +257,9 @@ function updateGameState(roomId) {
                 const toNode = edge.reversed
                     ? room.gameState.nodes.find(node => node.id === edge.from)
                     : room.gameState.nodes.find(node => node.id === edge.to);
+                const originalFromSize = originalSizes.get(fromNode.id); //use original mnode size
                 if (fromNode && toNode && fromNode.size >= 30) { // Ensure at least size 30 to attack or transfer
-                    const transferAmount = Math.ceil(fromNode.size * TRANSFER); // Calculate % of the 'from' node's size, rounded up
+                    const transferAmount = Math.min(Math.ceil(originalFromSize * TRANSFER), fromNode.size-1); //calculate transfer amount, dont go over the actual fromNode size
                     if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
                         if (toNode.size < MAXNODESIZE) {
                             fromNode.size -= transferAmount; // Transfer from fromNode to toNode
