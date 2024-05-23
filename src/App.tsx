@@ -18,6 +18,7 @@ interface Node {
   size: number;
   owner: string;
   moneynode: boolean;
+  poison: number;
 }
 
 interface Edge {
@@ -65,9 +66,9 @@ function App() {
     { id: 2, name: 'Bastion', icon: '/bastion.png' },
     { id: 3, name: 'Nuke', icon: '/bomb.png' },
     { id: 4, name: 'Freeze', icon: '/freeze.png' },
-    { id: 5, name: 'Two-Way Bridge', icon: '/twoway.png' },
+    { id: 5, name: 'Poison', icon: '/poison.png' },
     { id: 6, name: 'Rage', icon: '/rage.png' },
-    { id: 7, name: 'Poison', icon: '/poison.png' },
+    { id: 7, name: 'Two-Way Bridge', icon: '/twoway.png' },
     { id: 8, name: 'Cannon', icon: '/cannon.png' }
   ];
 
@@ -190,8 +191,8 @@ function App() {
         ctx.arc(node.x, node.y, textureSize, 0, 2 * Math.PI, false);
         ctx.fillStyle = node.owner;
         ctx.fill();
-        ctx.lineWidth = node.size >= 800 ? 8 : 1; //Big stroke if size is maxed
-        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = node.size >= 800 || node.poison > 0 ? 8 : 1; //Big stroke if size is maxed
+        ctx.strokeStyle = node.poison > 0 ? 'magenta' : '#000000'; //Purple if poisoned
         ctx.stroke();
 
         if (node.moneynode) {
@@ -355,6 +356,16 @@ function App() {
             }
           }
           break;
+        case 'g':
+          console.log('Poison Mode Toggled');
+          if (selectedAbilities.includes(5)) {
+            setIsPoisonMode(current => !current);
+            if (!isPoisonMode) {
+              setIsBridgeBuildMode(false);
+              setIsBastionMode(false);
+            }
+          }
+          break;
         case 'f':
           console.log('Freeze Mode Toggled');
           if (selectedAbilities.includes(4)) {
@@ -435,6 +446,11 @@ function App() {
           socketRef.current?.emit('nuke', { roomId, nodeId: clickedNode.id });
           setIsNukeMode(false);
           return;
+        } else if (isPoisonMode) {
+          console.log('Node Clicked with Poison')
+          socketRef.current?.emit('poison', { roomId, nodeId: clickedNode.id });
+          setIsPoisonMode(false);
+          return; 
         } else {
           // Emit event to update node owner
           console.log('Node Clicked');
@@ -467,6 +483,7 @@ function App() {
           if (isFreezeMode){
             console.log('Edge Clicked With Freeze');
             socketRef.current?.emit('freezeEdge', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`});
+            setIsFreezeMode(false);
           } else {
             console.log('Edge Clicked');
             socketRef.current?.emit('updateEdgeFlowing', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`, flowing: !clickedEdge.flowing });
@@ -542,6 +559,10 @@ function App() {
                 <img src="/bastion.png" alt="Bastion Icon" className={`game-icon ${isBastionMode ? 'active-icon' : ''}`} />}
               {selectedAbilities.includes(3) &&
                 <img src="/bomb.png" alt="Nuke Icon" className={`game-icon ${isNukeMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(4) &&
+                <img src="/freeze.png" alt="Freeze Icon" className={`game-icon ${isFreezeMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(5) &&
+                <img src="/poison.png" alt="Poison Icon" className={`game-icon ${isPoisonMode ? 'active-icon' : ''}`} />}
             </div>
             <button className="room-id-button" onClick={() => navigator.clipboard.writeText(roomId)}>
               Room ID: {roomId}

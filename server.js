@@ -37,10 +37,12 @@ const BRIDGECOST = 15;
 const NUKECOST = 40;
 const NODECOST = 5;
 
+const POISON_DURATION = 240;
+
 const INCOMERATE = 1;
 const MONEYNODEBONUS = 1;
 const MAXNODESIZE = 800;
-const TRANSFER = 0.01;
+const TRANSFER = 0.02;
 const GROWTHRATE = 1;
 const COLORNEUTRAL = 'white';
 
@@ -60,7 +62,8 @@ function generateRandomGraph() {
                 y: (Math.random() * 860)+20,
                 size: 1,
                 owner: COLORNEUTRAL,
-                moneynode: false
+                moneynode: false,
+                poison: 0
             };
         } while (nodes.some(node => getDistance(newNode, node) < minDistance)); //choose most central node without edges
         nodes.push(newNode);
@@ -207,10 +210,15 @@ function updateGameState(roomId) {
 
         // Grow nodes
         gameState.nodes.forEach(node => {
-            if (node.owner !== COLORNEUTRAL && node.owner !== 'black' && node.size < MAXNODESIZE) {
+            if (node.owner !== COLORNEUTRAL && node.owner !== 'black' && node.size < MAXNODESIZE && node.poison <= 0) {
                 node.size=node.size+GROWTHRATE;
             }
+            if (node.size > GROWTHRATE+1 && node.poison > 0){ //poison subtracts double the growth rate
+                node.size = node.size - GROWTHRATE*2;
+                node.poison = node.poison - 1;
+            }
         });
+
         // Increment money for each player
         if (room.tickCount % 12 === 0) {
             let additionalIncome = new Array(room.gameState.money.length).fill(0);
@@ -245,15 +253,25 @@ function updateGameState(roomId) {
                     ? room.gameState.nodes.find(node => node.id === edge.from)
                     : room.gameState.nodes.find(node => node.id === edge.to);
                 if (fromNode && toNode && fromNode.size >= 30) { // Ensure at least size 30 to attack or transfer
-                    const transferAmount = Math.ceil(fromNode.size * TRANSFER); // Calculate 1% of the 'from' node's size, rounded up
+                    const transferAmount = Math.ceil(fromNode.size * TRANSFER); // Calculate % of the 'from' node's size, rounded up
                     if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
                         if (toNode.size < MAXNODESIZE) {
-                            fromNode.size -= transferAmount; // Subtract the transfer amount from the 'from' node
-                            toNode.size += transferAmount; // Add the transfer amount to the 'to' node
+                            fromNode.size -= transferAmount; // Transfer from fromNode to toNode
+                            toNode.size += transferAmount; 
+                            if (fromNode.poison > 0 && toNode.poison <= 0) { // Transfer poison status
+                                toNode.poison = fromNode.poison;
+                            }
                         }
                     } else {
-                        fromNode.size -= transferAmount; // Subtract the transfer amount for the attack
-                        toNode.size -= transferAmount*2; // (Double damage mode) The 'to' node also loses the transfer amount in the fight
+                        fromNode.size -= transferAmount; //Attack, subtract fromnode
+                        if (toNode.size < 50) {
+                            toNode.size -= transferAmount; // If toNode size is less than 50, apply normal damage
+                        } else {
+                            toNode.size -= Math.ceil(transferAmount * 1.5); // If toNode size is 50 or more, apply increased damage
+                        }
+                        if (fromNode.poison > 0 && toNode.poison <= 0) { // Transfer poison status
+                            toNode.poison = fromNode.poison; 
+                        }
 
                         if (toNode.size <= 0) {
                             toNode.owner = fromNode.owner; // Switch the color of the node if 'to' node's size drops to 0 or below
@@ -385,6 +403,28 @@ io.on('connection', (socket) => {
                 }
             } else {
                 console.log('Nuke activation failed: Node owned by player or does not exist');
+            }
+        }
+    });
+
+    socket.on('poison', ({ roomId, nodeId }) => {
+        console.log('Poison activated on node: ' + nodeId);
+        const room = gameRooms[roomId];
+        if (room) {
+            const player = room.players[socket.id];
+            const node = room.gameState.nodes.find(node => node.id === nodeId);
+            if (node && node.owner !== player.color) { //node not owner by player & exists
+                // Check and subtract money
+                if (room.gameState.money[player.id - 1] >= -100) { //TEMP CHANGE TO NO COST
+                    room.gameState.money[player.id - 1] -= 30; //Change cost of 30 to Global Var later
+                    node.poison = 240; //Poison duration
+                    io.to(roomId).emit('graphData', room.gameState);
+                    console.log('Poison successfully activated on node ' + nodeId);
+                } else {
+                    console.log('Poison activation failed: Insufficient funds');
+                }
+            } else {
+                console.log('Poison activation failed: Node owned by player or does not exist');
             }
         }
     });
