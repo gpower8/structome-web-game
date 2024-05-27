@@ -15,12 +15,13 @@ const io = new Server(server, {
     }
 });
 
-app.use(express.static('/workspace/client/build'));
+app.use(express.static('/workspace/build'));
 
-// Catch-all handler for any request that doesn't match one above, send back the index.html file
+// catch-all handler for any request that doesn't match one above, send back the index.html file
 app.get('*', (req, res) => {
-    res.sendFile('/workspace/client/build/index.html');
+    res.sendFile('/workspace/build/index.html');
 });
+
 
 const PORT = process.env.PORT || 8080;
 
@@ -421,8 +422,8 @@ io.on('connection', (socket) => {
             const node = room.gameState.nodes.find(node => node.id === nodeId);
             if (node && node.owner !== player.color) { //node not owner by player & exists
                 // Check and subtract money
-                if (room.gameState.money[player.id - 1] >= -100) { //TEMP CHANGE TO NO COST
-                    room.gameState.money[player.id - 1] -= 30; //Change cost of 30 to Global Var later
+                if (room.gameState.money[player.id - 1] >= 35) { 
+                    room.gameState.money[player.id - 1] -= 35; //Change cost of 30 to Global Var later
                     node.poison = 240; //Poison duration
                     io.to(roomId).emit('graphData', room.gameState);
                     console.log('Poison successfully activated on node ' + nodeId);
