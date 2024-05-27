@@ -11,3 +11,27 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
+.abilities-container {
+  display: flex;
+  /* Use flexbox for layout */
+  flex-wrap: wrap;
+  /* Allow items to wrap as needed */
+  gap: 10px;
+  /* Space between items */
+  justify-content: center;
+  /* Center items horizontally */
+}
+
+.ability-item {
+  display: flex;
+  /* Use flexbox for layout inside each item */
+  flex-direction: column;
+  /* Stack items vertically */
+  align-items: center;
+  /* Center items horizontally */
+  cursor: pointer;
+  /* Change cursor to indicate clickable items */
+  transition: transform 0.3s;
+  /* Smooth transformation on click */
+}

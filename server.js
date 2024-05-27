@@ -8,7 +8,7 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: process.env.CORS_ORIGIN || "https://structome-mfbi2.ondigitalocean.app/", //app domain
+        origin: "http://localhost:3000", //app domain
         methods: ["GET", "POST"],
         allowedHeaders: ["my-custom-header"],
         credentials: true
@@ -22,7 +22,7 @@ app.get('*', (req, res) => {
     res.sendFile('/workspace/build/index.html');
 });
 
-const PORT = process.env.PORT || 8080;
+const PORT = process.env.PORT || 3001;
 
 const playerProperties = {
     ids: [1, 2, 3, 4, 5],
@@ -37,10 +37,12 @@ const BRIDGECOST = 15;
 const NUKECOST = 40;
 const NODECOST = 5;
 
+const POISON_DURATION = 240;
+
 const INCOMERATE = 1;
 const MONEYNODEBONUS = 1;
 const MAXNODESIZE = 800;
-const TRANSFER = 0.01;
+const TRANSFER = 0.02;
 const GROWTHRATE = 1;
 const COLORNEUTRAL = 'white';
 
@@ -60,7 +62,8 @@ function generateRandomGraph() {
                 y: (Math.random() * 860)+20,
                 size: 1,
                 owner: COLORNEUTRAL,
-                moneynode: false
+                moneynode: false,
+                poison: 0
             };
         } while (nodes.some(node => getDistance(newNode, node) < minDistance)); //choose most central node without edges
         nodes.push(newNode);
@@ -207,10 +210,15 @@ function updateGameState(roomId) {
 
         // Grow nodes
         gameState.nodes.forEach(node => {
-            if (node.owner !== COLORNEUTRAL && node.owner !== 'black' && node.size < MAXNODESIZE) {
+            if (node.owner !== COLORNEUTRAL && node.owner !== 'black' && node.size < MAXNODESIZE && node.poison <= 0) {
                 node.size=node.size+GROWTHRATE;
             }
+            if (node.size > GROWTHRATE+1 && node.poison > 0){ //poison subtracts double the growth rate
+                node.size = node.size - GROWTHRATE*2;
+                node.poison = node.poison - 1;
+            }
         });
+
         // Increment money for each player
         if (room.tickCount % 12 === 0) {
             let additionalIncome = new Array(room.gameState.money.length).fill(0);
@@ -236,6 +244,11 @@ function updateGameState(roomId) {
             room.gameState.money = room.gameState.money.map((m, index) => m + (nodesOwned[index] !== 0 ? INCOMERATE : 0) + MONEYNODEBONUS * additionalIncome[index]);
         }
         // Update edges
+        const originalSizes = new Map(); //stored original node sizes for calculations
+        gameState.nodes.forEach(node => {
+            originalSizes.set(node.id, node.size);
+        });
+
         gameState.edges.forEach(edge => {
             if (edge.flowing) {
                 const fromNode = edge.reversed
@@ -244,16 +257,27 @@ function updateGameState(roomId) {
                 const toNode = edge.reversed
                     ? room.gameState.nodes.find(node => node.id === edge.from)
                     : room.gameState.nodes.find(node => node.id === edge.to);
+                const originalFromSize = originalSizes.get(fromNode.id); //use original mnode size
                 if (fromNode && toNode && fromNode.size >= 30) { // Ensure at least size 30 to attack or transfer
-                    const transferAmount = Math.ceil(fromNode.size * TRANSFER); // Calculate 1% of the 'from' node's size, rounded up
+                    const transferAmount = Math.min(Math.ceil(originalFromSize * TRANSFER), fromNode.size-1); //calculate transfer amount, dont go over the actual fromNode size
                     if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
                         if (toNode.size < MAXNODESIZE) {
-                            fromNode.size -= transferAmount; // Subtract the transfer amount from the 'from' node
-                            toNode.size += transferAmount; // Add the transfer amount to the 'to' node
+                            fromNode.size -= transferAmount; // Transfer from fromNode to toNode
+                            toNode.size += transferAmount; 
+                            if (fromNode.poison > 0 && toNode.poison <= 0) { // Transfer poison status
+                                toNode.poison = fromNode.poison;
+                            }
                         }
                     } else {
-                        fromNode.size -= transferAmount; // Subtract the transfer amount for the attack
-                        toNode.size -= transferAmount*2; // (Double damage mode) The 'to' node also loses the transfer amount in the fight
+                        fromNode.size -= transferAmount; //Attack, subtract fromnode
+                        if (toNode.size < 50) {
+                            toNode.size -= transferAmount; // If toNode size is less than 50, apply normal damage
+                        } else {
+                            toNode.size -= Math.ceil(transferAmount * 1.5); // If toNode size is 50 or more, apply increased damage
+                        }
+                        if (fromNode.poison > 0 && toNode.poison <= 0) { // Transfer poison status
+                            toNode.poison = fromNode.poison; 
+                        }
 
                         if (toNode.size <= 0) {
                             toNode.owner = fromNode.owner; // Switch the color of the node if 'to' node's size drops to 0 or below
@@ -389,6 +413,28 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('poison', ({ roomId, nodeId }) => {
+        console.log('Poison activated on node: ' + nodeId);
+        const room = gameRooms[roomId];
+        if (room) {
+            const player = room.players[socket.id];
+            const node = room.gameState.nodes.find(node => node.id === nodeId);
+            if (node && node.owner !== player.color) { //node not owner by player & exists
+                // Check and subtract money
+                if (room.gameState.money[player.id - 1] >= -100) { //TEMP CHANGE TO NO COST
+                    room.gameState.money[player.id - 1] -= 30; //Change cost of 30 to Global Var later
+                    node.poison = 240; //Poison duration
+                    io.to(roomId).emit('graphData', room.gameState);
+                    console.log('Poison successfully activated on node ' + nodeId);
+                } else {
+                    console.log('Poison activation failed: Insufficient funds');
+                }
+            } else {
+                console.log('Poison activation failed: Node owned by player or does not exist');
+            }
+        }
+    });
+
     socket.on('updateEdgeFlowing', ({ roomId, edgeId, flowing }) => {
         console.log('edge left clicked on: '+edgeId);
         const room = gameRooms[roomId];
@@ -403,6 +449,29 @@ io.on('connection', (socket) => {
                     edge.flowing = flowing;
                     io.to(roomId).emit('graphData', room.gameState);
                 }
+            }
+        }
+    });
+
+    socket.on('freezeEdge', ({ roomId, edgeId }) => {
+        console.log('edge freeze request: ' + edgeId);
+        const room = gameRooms[roomId];
+        if (room) {
+            const edge = room.gameState.edges.find(edge => `${edge.from}-${edge.to}` === edgeId);
+            const currentPlayer = room.players[socket.id];
+            const fromNode = edge.reversed ? room.gameState.nodes.find(node => node.id === edge.to)
+                : room.gameState.nodes.find(node => node.id === edge.from);
+            if (edge && edge.twoway && fromNode && fromNode.owner === currentPlayer.color) {
+                if (room.gameState.money[currentPlayer.id - 1] >= 15) { //money check
+                    edge.twoway = false;
+                    room.gameState.money[currentPlayer.id - 1] -= 15;
+                    io.to(roomId).emit('graphData', room.gameState);
+                    console.log(`Edge ${edgeId} frozen successfully.`);
+                } else {
+                    console.log('Freeze action failed: Insufficient funds'); //can maybe delete error messages at some point
+                }
+            } else {
+                console.log('Freeze action failed: Edge does not exist or is not two-way');
             }
         }
     });

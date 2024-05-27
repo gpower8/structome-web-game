@@ -18,6 +18,7 @@ interface Node {
   size: number;
   owner: string;
   moneynode: boolean;
+  poison: number;
 }
 
 interface Edge {
@@ -33,10 +34,22 @@ interface GraphData {
   edges: Edge[];
   money: number[];
 }
-
+//Ability selector stuff:
 interface Player {
   id: number;
   color: string;
+}
+
+interface Ability {
+  id: number;
+  name: string;
+  icon: string;
+}
+
+interface AbilitySelectorProps {
+  abilities: Ability[];
+  selectedAbilities: number[];
+  setSelectedAbilities: React.Dispatch<React.SetStateAction<number[]>>;
 }
 
 function App() {
@@ -47,11 +60,61 @@ function App() {
   const [player, setPlayer] = useState<Player | null>(null);
   const [numPlayers, setNumPlayers] = useState<number>(2); // Default to 2 players
 
+  //Ability ID's
+  const abilities = [
+    { id: 1, name: 'Bridge Build', icon: '/bridge.png' },
+    { id: 2, name: 'Bastion', icon: '/bastion.png' },
+    { id: 3, name: 'Nuke', icon: '/bomb.png' },
+    { id: 4, name: 'Freeze', icon: '/freeze.png' },
+    { id: 5, name: 'Poison', icon: '/poison.png' },
+    { id: 6, name: 'Rage', icon: '/rage.png' },
+    { id: 7, name: 'Two-Way Bridge', icon: '/twoway.png' },
+    { id: 8, name: 'Cannon', icon: '/cannon.png' }
+  ];
+
+  const [selectedAbilities, setSelectedAbilities] = useState<number[]>([1, 2, 3]);
+
+  const AbilitySelector: React.FC<AbilitySelectorProps> = ({ abilities, selectedAbilities, setSelectedAbilities }) => {
+    const toggleAbility = (ability: Ability) => {
+      if (selectedAbilities.includes(ability.id)) {
+        setSelectedAbilities(selectedAbilities.filter(id => id !== ability.id));
+      } else if (selectedAbilities.length < 3) { //Number of abilities you can select
+        setSelectedAbilities([...selectedAbilities, ability.id]);
+      }
+    };
+
+    const selectedAbilitiesNames = abilities
+      .filter(ability => selectedAbilities.includes(ability.id))
+      .map(ability => ability.name)
+      .join(', ');
+
+    return (
+      <div>
+        <div className="abilities-container">
+          {abilities.map(ability => (
+            <div key={ability.id}
+              className={`ability-item ${selectedAbilities.includes(ability.id) ? 'selected' : ''}`}
+              onClick={() => toggleAbility(ability)}
+              style={{
+                border: selectedAbilities.includes(ability.id) ? '5px solid black' : 'none', // Apply border if selected
+                padding: '5px' // Add padding to prevent image from sticking to the border
+              }}>
+              <img src={ability.icon} alt={ability.name} style={{ width: '100px', height: '100px' }} />
+              <p>{ability.name}</p>
+            </div>
+          ))}
+        </div>
+        {/* Displaying names of selected abilities */}
+        <p>Selected Abilities: {selectedAbilitiesNames}</p>
+      </div>
+    );
+  };
+
   useEffect(() => {
-    new Audio('/soundtrack.mp3').play();
+    //new Audio('/soundtrack.mp3').play();
   }, []);
   useEffect(() => {
-    socketRef.current = io('/');
+    socketRef.current = io('http://localhost:3001');
     const socket = socketRef.current;
 
     socket.on('connect', () => console.log('Connected to the server.'));
@@ -80,14 +143,18 @@ function App() {
     socketRef.current?.emit('joinRoom', id);
     setRoomId(id);
   };
-  //bridge build mode
-  const [isBridgeBuildMode, setIsBridgeBuildMode] = useState(false);
+
   const [firstNode, setFirstNode] = useState<Node | null>(null);
   const [cursorPosition, setCursorPosition] = useState<{ x: number; y: number } | null>(null);
 
-  //nuke and bastion
+  //Ability Modes
+  const [isBridgeBuildMode, setIsBridgeBuildMode] = useState(false);
   const [isBastionMode, setIsBastionMode] = useState(false);
   const [isNukeMode, setIsNukeMode] = useState(false);
+  const [isFreezeMode, setIsFreezeMode] = useState(false);
+  const [isTwoWayBridgeMode, setIsTwoWayBridgeMode] = useState(false);
+  const [isPoisonMode, setIsPoisonMode] = useState(false);
+  const [isCannonMode, setIsCannonMode] = useState(false);
 
   useEffect(() => { //Main drawing canvas useEffect
     const canvas = canvasRef.current;
@@ -118,8 +185,8 @@ function App() {
         ctx.arc(node.x, node.y, textureSize, 0, 2 * Math.PI, false);
         ctx.fillStyle = node.owner;
         ctx.fill();
-        ctx.lineWidth = node.size >= 800 ? 8 : 1; //Big stroke if size is maxed
-        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = node.size >= 800 || node.poison > 0 ? 8 : 1; //Big stroke if size is maxed
+        ctx.strokeStyle = node.poison > 0 ? 'magenta' : '#000000'; //Purple if poisoned
         ctx.stroke();
 
         if (node.moneynode) {
@@ -250,27 +317,63 @@ function App() {
       switch (event.key) {
         case 'a':
           console.log('Bridge Build Mode Toggled');
-          setIsBridgeBuildMode(current => !current);
-          setFirstNode(null); // Reset first node selection
-          if (!isBridgeBuildMode) {
-            setIsBastionMode(false);
-            setIsNukeMode(false);
+          // Check if Bridge Build ability is selected before toggling
+          if (selectedAbilities.includes(1)) { //Check if ability was selected in menu
+            setIsBridgeBuildMode(current => !current);
+            setFirstNode(null); // Reset first node selection
+            if (!isBridgeBuildMode) {
+              setIsBastionMode(false);
+              setIsNukeMode(false);
+            }
+          } else {
+            console.log("Bridge Build ability not selected.");
           }
           break;
         case 's':
           console.log('Bastion Mode Toggled');
-          setIsBastionMode(current => !current);
-          if (!isBastionMode) {
-            setIsBridgeBuildMode(false);
-            setIsNukeMode(false);
+          if (selectedAbilities.includes(2)) { 
+            setIsBastionMode(current => !current);
+            if (!isBastionMode) {
+              setIsBridgeBuildMode(false);
+              setIsNukeMode(false);
+            }
           }
           break;
         case 'd':
           console.log('Nuke Mode Toggled');
-          setIsNukeMode(current => !current);
-          if (!isNukeMode) {
-            setIsBridgeBuildMode(false);
-            setIsBastionMode(false);
+          // Check if Nuke ability is selected before toggling
+          if (selectedAbilities.includes(3)) { //3 is the ID for Nuke
+            setIsNukeMode(current => !current);
+            if (!isNukeMode) {
+              setIsBridgeBuildMode(false);
+              setIsBastionMode(false);
+            }
+          }
+          break;
+        case 'g':
+          console.log('Poison Mode Toggled');
+          if (selectedAbilities.includes(5)) {
+            setIsPoisonMode(current => !current);
+            if (!isPoisonMode) {
+              setIsBridgeBuildMode(false);
+              setIsBastionMode(false);
+            }
+          }
+          break;
+        case 'h':
+          console.log('Rage Mode Pressed');
+          if (selectedAbilities.includes(6)) {
+            socketRef.current?.emit('rage', { roomId });
+          }
+          break;
+        case 'f':
+          console.log('Freeze Mode Toggled');
+          if (selectedAbilities.includes(4)) {
+            setIsFreezeMode(current => !current);
+            if (!setIsFreezeMode) {
+              setIsBridgeBuildMode(false);
+              setIsBastionMode(false);
+            }
           }
           break;
         default:
@@ -283,7 +386,8 @@ function App() {
     return () => {
       window.removeEventListener('keydown', handleKeyPress);
     };
-  }, [isBridgeBuildMode, isBastionMode, isNukeMode]);
+  }, [selectedAbilities, isBridgeBuildMode, isBastionMode, isNukeMode]); // Added dependencies here
+
 
   useEffect(() => { //Cursor Track Helper
     const canvas = canvasRef.current;
@@ -342,6 +446,11 @@ function App() {
           socketRef.current?.emit('nuke', { roomId, nodeId: clickedNode.id });
           setIsNukeMode(false);
           return;
+        } else if (isPoisonMode) {
+          console.log('Node Clicked with Poison')
+          socketRef.current?.emit('poison', { roomId, nodeId: clickedNode.id });
+          setIsPoisonMode(false);
+          return; 
         } else {
           // Emit event to update node owner
           console.log('Node Clicked');
@@ -371,8 +480,14 @@ function App() {
         });
 
         if (clickedEdge) {
-          console.log('Edge Clicked');
-          socketRef.current?.emit('updateEdgeFlowing', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`, flowing: !clickedEdge.flowing });
+          if (isFreezeMode){
+            console.log('Edge Clicked With Freeze');
+            socketRef.current?.emit('freezeEdge', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`});
+            setIsFreezeMode(false);
+          } else {
+            console.log('Edge Clicked');
+            socketRef.current?.emit('updateEdgeFlowing', { roomId, edgeId: `${clickedEdge.from}-${clickedEdge.to}`, flowing: !clickedEdge.flowing });
+          }
         }
       };
       }
@@ -397,6 +512,11 @@ function App() {
       {!roomId && (
         <div className="menu">
           <img src="/menutext.gif" alt="Logo" className="menu-logo" />
+          <AbilitySelector
+            abilities={abilities}
+            selectedAbilities={selectedAbilities}
+            setSelectedAbilities={setSelectedAbilities}
+          />
           <select className="menu-select" value={numPlayers} onChange={(e) => setNumPlayers(Number(e.target.value))}>
             {[2, 3, 4, 5].map((value) => (
               <option key={value} value={value}>
@@ -433,9 +553,16 @@ function App() {
               </div>
             )}
             <div className="icons-container">
-              <img src="/bridge.png" alt="Icon 1" className={`game-icon ${isBridgeBuildMode ? 'active-icon' : ''}`} />
-              <img src="/bastion.png" alt="Icon 2" className={`game-icon ${isBastionMode ? 'active-icon' : ''}`} />
-              <img src="/bomb.png" alt="Icon 3" className={`game-icon ${isNukeMode ? 'active-icon' : ''}`} />
+              {selectedAbilities.includes(1) &&
+                <img src="/bridge.png" alt="Bridge Icon" className={`game-icon ${isBridgeBuildMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(2) &&
+                <img src="/bastion.png" alt="Bastion Icon" className={`game-icon ${isBastionMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(3) &&
+                <img src="/bomb.png" alt="Nuke Icon" className={`game-icon ${isNukeMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(4) &&
+                <img src="/freeze.png" alt="Freeze Icon" className={`game-icon ${isFreezeMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(5) &&
+                <img src="/poison.png" alt="Poison Icon" className={`game-icon ${isPoisonMode ? 'active-icon' : ''}`} />}
             </div>
             <button className="room-id-button" onClick={() => navigator.clipboard.writeText(roomId)}>
               Room ID: {roomId}
@@ -444,6 +571,7 @@ function App() {
           <canvas ref={canvasRef} width={WIDTH} height={HEIGHT} className="canvas" />
         </div>
       )}
+
     </div>
   );
 }
