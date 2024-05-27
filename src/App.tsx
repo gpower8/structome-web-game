@@ -110,11 +110,6 @@ function App() {
     );
   };
 
-
-
-
-  
-
   useEffect(() => {
     //new Audio('/soundtrack.mp3').play();
   }, []);
@@ -158,7 +153,6 @@ function App() {
   const [isNukeMode, setIsNukeMode] = useState(false);
   const [isFreezeMode, setIsFreezeMode] = useState(false);
   const [isTwoWayBridgeMode, setIsTwoWayBridgeMode] = useState(false);
-  const [isRageMode, setIsRageMode] = useState(false);
   const [isPoisonMode, setIsPoisonMode] = useState(false);
   const [isCannonMode, setIsCannonMode] = useState(false);
 
@@ -364,6 +358,12 @@ function App() {
               setIsBridgeBuildMode(false);
               setIsBastionMode(false);
             }
+          }
+          break;
+        case 'h':
+          console.log('Rage Mode Pressed');
+          if (selectedAbilities.includes(6)) {
+            socketRef.current?.emit('rage', { roomId });
           }
           break;
         case 'f':
