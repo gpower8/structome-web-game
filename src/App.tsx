@@ -351,7 +351,7 @@ function App() {
             }
           }
           break;
-        case 'g':
+        case 'j':
           console.log('Poison Mode Toggled');
           if (selectedAbilities.includes(5)) {
             setIsPoisonMode(current => !current);
