@@ -8,21 +8,21 @@ const server = http.createServer(app);
 
 const io = new Server(server, {
     cors: {
-        origin: "http://localhost:3000", //app domain
+        origin: process.env.CORS_ORIGIN || "https://structome-mfbi2.ondigitalocean.app/",
         methods: ["GET", "POST"],
         allowedHeaders: ["my-custom-header"],
         credentials: true
     }
 });
 
-app.use(express.static('/workspace/build'));
+app.use(express.static('/workspace/client/build'));
 
-// catch-all handler for any request that doesn't match one above, send back the index.html file
+// Catch-all handler for any request that doesn't match one above, send back the index.html file
 app.get('*', (req, res) => {
-    res.sendFile('/workspace/build/index.html');
+    res.sendFile('/workspace/client/build/index.html');
 });
 
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 8080;
 
 const playerProperties = {
     ids: [1, 2, 3, 4, 5],

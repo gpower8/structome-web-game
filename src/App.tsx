@@ -114,8 +114,9 @@ function App() {
     //new Audio('/soundtrack.mp3').play();
   }, []);
   useEffect(() => {
-    socketRef.current = io('http://localhost:3001');
+    socketRef.current = io('/');
     const socket = socketRef.current;
+    
 
     socket.on('connect', () => console.log('Connected to the server.'));
     socket.on('roomCreated', ({ roomId, playerInfo }: { roomId: string; playerInfo: Player }) => {
