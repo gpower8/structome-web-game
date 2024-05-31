@@ -373,8 +373,11 @@ io.on('connection', (socket) => {
             const node = room.gameState.nodes.find(node => node.id === nodeId);
             if (node && node.owner === COLORNEUTRAL && !node.moneynode && room.gameState.money[player.id - 1] >= NODECOST) {
                 node.owner = player.color;
+                node.size = 1;
                 room.gameState.money[player.id - 1] -= NODECOST;
                 io.to(roomId).emit('graphData', room.gameState);
+            } else {
+                socket.emit('errormsg', { message: 'Node error or Insufficient funds. Cost: ' + POISON_COST });
             }
         }
     });
@@ -554,8 +557,9 @@ io.on('connection', (socket) => {
                         }
                     } else {
                         const largerNode = fromNode.size > toNode.size ? fromNode : toNode;
+                        const smallerNode = fromNode.size > toNode.size ? toNode : fromNode;
                         //determine larger node and if the current player owns the larger node
-                        if (largerNode.owner === currentPlayer.color) {
+                        if (largerNode.owner === currentPlayer.color || (largerNode.owner === COLORNEUTRAL && smallerNode.owner === currentPlayer.color)) {
                             edge.reversed = !edge.reversed;
                             edge.flowing = true;//Turn of flowing if swapped
                             io.to(roomId).emit('graphData', room.gameState);
