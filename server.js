@@ -38,12 +38,12 @@ const BRIDGECOST = 15;
 const NUKECOST = 40;
 const NODECOST = 5;
 
-const POISON_DURATION = 240;
+const POISON_DURATION = 180;
 
 const INCOMERATE = 1;
 const MONEYNODEBONUS = 1;
 const MAXNODESIZE = 800;
-const TRANSFER = 0.02;
+const TRANSFER = 0.15;
 const GROWTHRATE = 1;
 const COLORNEUTRAL = 'white';
 
@@ -61,7 +61,7 @@ function generateRandomGraph() {
                 id: i,
                 x: (Math.random() * 1560)+20, //changed math so node isnt on edge of screen
                 y: (Math.random() * 860)+20,
-                size: 1,
+                size: 45,
                 owner: COLORNEUTRAL,
                 moneynode: false,
                 poison: 0
@@ -218,6 +218,15 @@ function updateGameState(roomId) {
                 node.size = node.size - GROWTHRATE*2;
                 node.poison = node.poison - 1;
             }
+
+
+            if (node.poison > 0) { 
+                if (node.size > GROWTHRATE*2){
+                    node.size = node.size - GROWTHRATE * 2; //poison subtracts double the growth rate
+                }
+                node.poison = node.poison - 1;
+            }
+
         });
 
         // Increment money for each player
@@ -424,7 +433,7 @@ io.on('connection', (socket) => {
                 // Check and subtract money
                 if (room.gameState.money[player.id - 1] >= 35) { 
                     room.gameState.money[player.id - 1] -= 35; //Change cost of 30 to Global Var later
-                    node.poison = 240; //Poison duration
+                    node.poison = POISON_DURATION;
                     io.to(roomId).emit('graphData', room.gameState);
                     console.log('Poison successfully activated on node ' + nodeId);
                 } else {
