@@ -1,5 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { ToastContainer, toast } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 import './App.css';
 
 const WIDTH = 1600;
@@ -131,7 +133,7 @@ function App() {
       setGraphData(data);
     });
     socket.on('errormsg', (data) => {
-      alert(data.message); // Or update the UI accordingly
+      toast.error(data.message); // Use toast for error message
       console.log(data.message);
     });
 
@@ -514,6 +516,7 @@ function App() {
       backgroundSize: 'cover', // Stretch the image to cover the entire div
       backgroundRepeat: 'no-repeat', // Do not repeat the background image
     }}>
+      <ToastContainer />
       {!roomId && (
         <div className="menu">
           <img src="/menutext.gif" alt="Logo" className="menu-logo" />
