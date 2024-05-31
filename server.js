@@ -40,7 +40,7 @@ const NODECOST = 10;
 const POISON_COST = 60;
 const FREEZE_COST = 10;
 
-const POISON_DURATION = 180;
+const POISON_DURATION = 160;
 
 const INCOMERATE = 1;
 const MONEYNODEBONUS = 1;
@@ -212,25 +212,26 @@ function updateGameState(roomId) {
         const { gameState } = room;
 
         // Grow nodes
-        gameState.nodes.forEach(node => {
-            if (node.owner !== COLORNEUTRAL && node.owner !== 'black' && node.size < MAXNODESIZE && node.poison <= 0) {
-                node.size=node.size+GROWTHRATE;
-            }
-            if (node.size > GROWTHRATE+1 && node.poison > 0){ //poison subtracts double the growth rate
-                node.size = node.size - GROWTHRATE*2;
-                node.poison = node.poison - 1;
-            }
-
-
-            if (node.poison > 0) { 
-                if (node.size > GROWTHRATE*2){
-                    node.size = node.size - GROWTHRATE * 2; //poison subtracts double the growth rate
+        if (room.tickCount % 3 !== 0) { //Reduce growth rate by a Third (probably change this later as its messy)
+            gameState.nodes.forEach(node => {
+                if (node.owner !== COLORNEUTRAL && node.owner !== 'black' && node.size < MAXNODESIZE && node.poison <= 0) {
+                    node.size=node.size+GROWTHRATE;
                 }
-                node.poison = node.poison - 1;
-            }
+                if (node.size > GROWTHRATE+1 && node.poison > 0){ //poison subtracts double the growth rate
+                    node.size = node.size - GROWTHRATE*2;
+                    node.poison = node.poison - 1;
+                }
 
-        });
 
+                if (node.poison > 0) { 
+                    if (node.size > GROWTHRATE*2){
+                        node.size = node.size - GROWTHRATE * 2; //poison subtracts double the growth rate
+                    }
+                    node.poison = node.poison - 1;
+                }
+
+            });
+        }
         // Increment money for each player
         if (room.tickCount % 12 === 0) {
             let additionalIncome = new Array(room.gameState.money.length).fill(0);
