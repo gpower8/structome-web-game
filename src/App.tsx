@@ -299,7 +299,7 @@ function App() {
         const closestY = fromNode.y + (dot * dy);
         const distance = Math.sqrt((x - closestX) ** 2 + (y - closestY) ** 2);
 
-        return distance < 10; // Assuming a clickable range of 10 pixels around the edge
+        return distance < 8; // Assuming a clickable range of 8 pixels around the edge
       });
 
       if (clickedEdge) {
