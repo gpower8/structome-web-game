@@ -33,10 +33,12 @@ const playerProperties = {
 const gameRooms = {};
 
 const FRAMERATE = 12;
-const BASTIONCOST = 15;
-const BRIDGECOST = 15;
-const NUKECOST = 40;
-const NODECOST = 5;
+const BASTIONCOST = 20;
+const BRIDGECOST = 20;
+const NUKECOST = 60;
+const NODECOST = 10;
+const POISON_COST = 60;
+const FREEZE_COST = 10;
 
 const POISON_DURATION = 180;
 
@@ -431,8 +433,8 @@ io.on('connection', (socket) => {
             const node = room.gameState.nodes.find(node => node.id === nodeId);
             if (node && node.owner !== player.color) { //node not owner by player & exists
                 // Check and subtract money
-                if (room.gameState.money[player.id - 1] >= 35) { 
-                    room.gameState.money[player.id - 1] -= 35; //Change cost of 30 to Global Var later
+                if (room.gameState.money[player.id - 1] >= POISON_COST) { 
+                    room.gameState.money[player.id - 1] -= POISON_COST; //Change cost of 30 to Global Var later
                     node.poison = POISON_DURATION;
                     io.to(roomId).emit('graphData', room.gameState);
                     console.log('Poison successfully activated on node ' + nodeId);
@@ -472,9 +474,9 @@ io.on('connection', (socket) => {
             const fromNode = edge.reversed ? room.gameState.nodes.find(node => node.id === edge.to)
                 : room.gameState.nodes.find(node => node.id === edge.from);
             if (edge && edge.twoway && fromNode && fromNode.owner === currentPlayer.color) {
-                if (room.gameState.money[currentPlayer.id - 1] >= 15) { //money check
+                if (room.gameState.money[currentPlayer.id - 1] >= FREEZE_COST) { //money check
                     edge.twoway = false;
-                    room.gameState.money[currentPlayer.id - 1] -= 15;
+                    room.gameState.money[currentPlayer.id - 1] -= FREEZE_COST;
                     io.to(roomId).emit('graphData', room.gameState);
                     console.log(`Edge ${edgeId} frozen successfully.`);
                 } else {
