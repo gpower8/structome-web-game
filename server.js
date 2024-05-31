@@ -51,7 +51,7 @@ const COLORNEUTRAL = 'white';
 
 function generateRandomGraph() {
     const nodes = [], edges = [];
-    const numNodes = 50, minDistance = 90, money = [5, 5, 5, 5, 5];
+    const numNodes = 50, minDistance = 90, money = [10, 10, 10, 10, 10];
     
     const centerX = 1560 / 2 + 20; //finds middle of the screen
     const centerY = 860 / 2 + 20;
@@ -385,14 +385,20 @@ io.on('connection', (socket) => {
             const player = room.players[socket.id];
             const node = room.gameState.nodes.find(node => node.id === nodeId);
 
-            if (node && node.owner === player.color && room.gameState.money[player.id - 1] >= BASTIONCOST) {
-                node.owner = 'black'; // Change the node's color to not neutral so it cant be clicked
-                node.size = 4*node.size+200; // Triple the node's size
-                room.gameState.money[player.id - 1] -= BASTIONCOST; // Subtract 5 money from the player
-                io.to(roomId).emit('graphData', room.gameState);
-                console.log('Bastion successfully activated on node ' + nodeId);
+            if (node && node.owner === player.color) {
+                if (room.gameState.money[player.id - 1] >= BASTIONCOST) {
+                    node.owner = 'black'; // Change the node's color to not neutral so it can't be clicked
+                    node.size = 4 * node.size + 200; // Triple the node's size
+                    room.gameState.money[player.id - 1] -= BASTIONCOST; // Subtract BASTIONCOST from the player
+                    io.to(roomId).emit('graphData', room.gameState);
+                    console.log('Bastion successfully activated on node ' + nodeId);
+                } else {
+                    console.log('Bastion activation failed: Insufficient funds');
+                    socket.emit('errormsg', { message: 'Insufficient funds. Cost: ' + BASTIONCOST });
+                }
             } else {
-                console.log('Bastion activation failed: Node not owned by player or insufficient funds');
+                console.log('Bastion activation failed: Node not owned by player or does not exist');
+                socket.emit('errormsg', { message: 'Node not owned' });
             }
         }
     });
@@ -418,9 +424,11 @@ io.on('connection', (socket) => {
                     console.log('Nuke successfully activated on node ' + nodeId);
                 } else {
                     console.log('Nuke activation failed: Insufficient funds');
+                    socket.emit('errormsg', { message: 'Insufficient funds. Cost: ' + NUKECOST });
                 }
             } else {
                 console.log('Nuke activation failed: Node owned by player or does not exist');
+                socket.emit('errormsg', { message: 'Node is owned by you or is a money node' });
             }
         }
     });
@@ -440,9 +448,11 @@ io.on('connection', (socket) => {
                     console.log('Poison successfully activated on node ' + nodeId);
                 } else {
                     console.log('Poison activation failed: Insufficient funds');
+                    socket.emit('errormsg', { message: 'Insufficient funds. Cost: ' + POISON_COST });
                 }
             } else {
                 console.log('Poison activation failed: Node owned by player or does not exist');
+                socket.emit('errormsg', { message: 'Poison activation failed: Node owned by you or does not exist' });
             }
         }
     });
@@ -481,9 +491,11 @@ io.on('connection', (socket) => {
                     console.log(`Edge ${edgeId} frozen successfully.`);
                 } else {
                     console.log('Freeze action failed: Insufficient funds'); //can maybe delete error messages at some point
+                    socket.emit('errormsg', { message: 'Insufficient funds. Cost: ' + FREEZE_COST });
                 }
             } else {
                 console.log('Freeze action failed: Edge does not exist or is not two-way');
+                socket.emit('errormsg', { message: 'From node is not owned by you or edge cant be frozen' });
             }
         }
     });
@@ -509,9 +521,11 @@ io.on('connection', (socket) => {
                     console.log('Edge built successfully from node ' + from + ' to node ' + to);
                 } else {
                     console.log('Edge build request failed due to overlap');
+                    socket.emit('errormsg', { message: 'Cannot build over another bridge' });
                 }
             } else {
                 console.log('Edge build request failed due to ownership or insufficient funds');
+                socket.emit('errormsg', { message: 'Node ownership issue or Insufficient funds. Cost: ' + BRIDGECOST });
             }
         }
     });
@@ -547,6 +561,7 @@ io.on('connection', (socket) => {
                             io.to(roomId).emit('graphData', room.gameState);
                         } else {
                             console.log('Player does not own the larger node, cannot reverse edge');
+                            socket.emit('errormsg', { message: 'Must own the bigger node to reverse the bridge' });
                         }
                     }
                 }
