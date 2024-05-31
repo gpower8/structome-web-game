@@ -130,6 +130,10 @@ function App() {
     socket.on('graphData', (data: GraphData) => {
       setGraphData(data);
     });
+    socket.on('errormsg', (data) => {
+      alert(data.message); // Or update the UI accordingly
+      console.log(data.message);
+    });
 
     return () => {
       socket.disconnect();
