@@ -329,19 +329,28 @@ function App() {
     };
   }, [graphData, roomId]); // Re-run when graphData or roomId changes
 
+  const resetModes = () => {
+    setIsBridgeBuildMode(false);
+    setIsBastionMode(false);
+    setIsNukeMode(false);
+    setIsFreezeMode(false);
+    setIsPoisonMode(false);
+    setIsRageMode(false);
+    setIsTwoWayBridgeMode(false);
+    setIsCannonMode(false);
+  };
 
   useEffect(() => { // Activate Modes
     const handleKeyPress = (event: KeyboardEvent) => {
       switch (event.key) {
         case 'a':
           console.log('Bridge Build Mode Toggled');
-          // Check if Bridge Build ability is selected before toggling
-          if (selectedAbilities.includes(1)) { //Check if ability was selected in menu
+          if (selectedAbilities.includes(1)) {
             setIsBridgeBuildMode(current => !current);
             setFirstNode(null); // Reset first node selection
             if (!isBridgeBuildMode) {
-              setIsBastionMode(false);
-              setIsNukeMode(false);
+              resetModes();
+              setIsBridgeBuildMode(true);
             }
           } else {
             console.log("Bridge Build ability not selected.");
@@ -349,22 +358,31 @@ function App() {
           break;
         case 's':
           console.log('Bastion Mode Toggled');
-          if (selectedAbilities.includes(2)) { 
+          if (selectedAbilities.includes(2)) {
             setIsBastionMode(current => !current);
             if (!isBastionMode) {
-              setIsBridgeBuildMode(false);
-              setIsNukeMode(false);
+              resetModes();
+              setIsBastionMode(true);
             }
           }
           break;
         case 'd':
           console.log('Nuke Mode Toggled');
-          // Check if Nuke ability is selected before toggling
-          if (selectedAbilities.includes(3)) { //3 is the ID for Nuke
+          if (selectedAbilities.includes(3)) {
             setIsNukeMode(current => !current);
             if (!isNukeMode) {
-              setIsBridgeBuildMode(false);
-              setIsBastionMode(false);
+              resetModes();
+              setIsNukeMode(true);
+            }
+          }
+          break;
+        case 'f':
+          console.log('Freeze Mode Toggled');
+          if (selectedAbilities.includes(4)) {
+            setIsFreezeMode(current => !current);
+            if (!isFreezeMode) {
+              resetModes();
+              setIsFreezeMode(true);
             }
           }
           break;
@@ -373,8 +391,8 @@ function App() {
           if (selectedAbilities.includes(5)) {
             setIsPoisonMode(current => !current);
             if (!isPoisonMode) {
-              setIsBridgeBuildMode(false);
-              setIsBastionMode(false);
+              resetModes();
+              setIsPoisonMode(true);
             }
           }
           break;
@@ -383,38 +401,28 @@ function App() {
           if (selectedAbilities.includes(6)) {
             setIsRageMode(current => !current);
             if (!isRageMode) {
-              setIsBridgeBuildMode(false);
-              setIsBastionMode(false);
+              resetModes();
+              setIsRageMode(true);
             }
           }
           break;
-        case 'h':
+        case 'k':
           console.log('Two Way Bridge Mode Toggled');
           if (selectedAbilities.includes(7)) {
-            setIsPoisonMode(current => !current);
+            setIsTwoWayBridgeMode(current => !current);
             if (!isTwoWayBridgeMode) {
-              setIsBridgeBuildMode(false);
-              setIsBastionMode(false);
+              resetModes();
+              setIsTwoWayBridgeMode(true);
             }
           }
           break;
-        case 'h':
+        case 'l':
           console.log('Cannon Mode Toggled');
           if (selectedAbilities.includes(8)) {
             setIsCannonMode(current => !current);
             if (!isCannonMode) {
-              setIsBridgeBuildMode(false);
-              setIsBastionMode(false);
-            }
-          }
-          break;
-        case 'f':
-          console.log('Freeze Mode Toggled');
-          if (selectedAbilities.includes(4)) {
-            setIsFreezeMode(current => !current);
-            if (!setIsFreezeMode) {
-              setIsBridgeBuildMode(false);
-              setIsBastionMode(false);
+              resetModes();
+              setIsCannonMode(true);
             }
           }
           break;
@@ -620,6 +628,10 @@ function App() {
                 <img src="/freeze.png" alt="Freeze Icon" className={`game-icon ${isFreezeMode ? 'active-icon' : ''}`} />}
               {selectedAbilities.includes(5) &&
                 <img src="/poison.png" alt="Poison Icon" className={`game-icon ${isPoisonMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(6) &&
+                <img src="/rage.png" alt="Rage Icon" className={`game-icon ${isRageMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(7) &&
+                <img src="/twoway.png" alt="Two-Way Bridge Icon" className={`game-icon ${isTwoWayBridgeMode ? 'active-icon' : ''}`} />}
             </div>
             <button className="room-id-button" onClick={() => navigator.clipboard.writeText(roomId)}>
               Room ID: {roomId}
