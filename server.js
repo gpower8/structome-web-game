@@ -272,7 +272,7 @@ function updateGameState(roomId) {
                     ? room.gameState.nodes.find(node => node.id === edge.from)
                     : room.gameState.nodes.find(node => node.id === edge.to);
                 const originalFromSize = originalSizes.get(fromNode.id); //use original mnode size
-                console.log(node.id + ' nodeid/originalsize ' + originalFromSize); //TEMPORARY TEST
+                console.log(fromNode.size + ' nodeid/originalsize ' + originalFromSize); //TEMPORARY TEST
                 if (fromNode && toNode && fromNode.size >= 30) { // Ensure at least size 30 to attack or transfer
                     const transferAmount = Math.min(Math.ceil(originalFromSize * TRANSFER), fromNode.size-1); //calculate transfer amount, dont go over the actual fromNode size
                     if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
