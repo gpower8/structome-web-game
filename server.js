@@ -636,6 +636,7 @@ io.on('connection', (socket) => {
             if (room.players[socket.id]) {
                 console.log('deleting player')
                 delete room.players[socket.id]; // Remove the player
+                io.to(roomId).emit('errormsg', { message: 'A Player Disconnected (The person who did not get this message is the problem)' });
 
                 // If the game loop is running and players are now less than maxPlayers, stop the game loop
                 if (room.gameLoopIntervalId && Object.keys(room.players).length < room.maxPlayers) {
