@@ -277,7 +277,8 @@ function updateGameState(roomId) {
                     const transferAmount = Math.min(Math.ceil(originalFromSize * TRANSFER), fromNode.size-1); //calculate transfer amount, dont go over the actual fromNode size
                     
                     if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
-                        if (toNode.size < MAXNODESIZE) {
+                        const maxSize = toNode.rage ? 3 * MAXNODESIZE : MAXNODESIZE; //Triple max node size if rage node
+                        if (toNode.size < maxSize) {
                             fromNode.size -= transferAmount; // Transfer from fromNode to toNode
                             toNode.size += transferAmount; 
                             if (fromNode.poison > 0 && toNode.poison <= 0) { // Transfer poison status
