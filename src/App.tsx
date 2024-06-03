@@ -406,7 +406,7 @@ function App() {
             }
           }
           break;
-        case 'k':
+        case 'g':
           console.log('Two Way Bridge Mode Toggled');
           if (selectedAbilities.includes(7)) {
             setIsTwoWayBridgeMode(current => !current);
@@ -416,7 +416,7 @@ function App() {
             }
           }
           break;
-        case 'l':
+        case 'k':
           console.log('Cannon Mode Toggled');
           if (selectedAbilities.includes(8)) {
             setIsCannonMode(current => !current);
