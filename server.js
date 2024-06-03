@@ -40,7 +40,7 @@ const NODECOST = 10;
 const POISON_COST = 60;
 const FREEZE_COST = 10;
 const RAGE_COST = 15;
-TWOWAY_BRIDGECOST = 15;
+const TWOWAY_BRIDGECOST = 15;
 
 const POISON_DURATION = 160;
 
@@ -274,7 +274,7 @@ function updateGameState(roomId) {
                     : room.gameState.nodes.find(node => node.id === edge.to);
                 const originalFromSize = originalSizes.get(fromNode.id); //use original mnode size
                 
-                if (fromNode && toNode && originalFromSize >= 30) { // Ensure at least size 30 to attack or transfer
+                if (fromNode && toNode && originalFromSize >= 30 && fromNode.owner !== COLORNEUTRAL) { // Ensure at least size 30 to attack or transfer and make sure its not a neutral node attacking
                     const transferAmount = Math.min(Math.ceil(originalFromSize * TRANSFER), fromNode.size-1); //calculate transfer amount, dont go over the actual fromNode size
                     
                     if (fromNode.owner === toNode.owner) { // If same color nodes, transfer, otherwise fight
@@ -382,7 +382,7 @@ io.on('connection', (socket) => {
                 room.gameState.money[player.id - 1] -= NODECOST;
                 io.to(roomId).emit('graphData', room.gameState);
             } else {
-                socket.emit('errormsg', { message: 'Node error or Insufficient funds. Cost: ' + POISON_COST });
+                socket.emit('errormsg', { message: 'Error or Insufficient funds. Cost: ' + NODECOST });
             }
         }
     });
