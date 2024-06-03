@@ -35,10 +35,11 @@ const gameRooms = {};
 const FRAMERATE = 12;
 const BASTIONCOST = 20;
 const BRIDGECOST = 20;
-const NUKECOST = 60;
+const NUKECOST = 70;
 const NODECOST = 10;
 const POISON_COST = 60;
 const FREEZE_COST = 10;
+const RAGE_COST = 15;
 
 const POISON_DURATION = 160;
 
@@ -66,6 +67,7 @@ function generateRandomGraph() {
                 size: 45,
                 owner: COLORNEUTRAL,
                 moneynode: false,
+                rage: false,
                 poison: 0
             };
         } while (nodes.some(node => getDistance(newNode, node) < minDistance)); //choose most central node without edges
@@ -214,15 +216,14 @@ function updateGameState(roomId) {
         // Grow nodes
         if (room.tickCount % 3 !== 0) { //Reduce growth rate by a Third (probably change this later as its messy)
             gameState.nodes.forEach(node => {
-                if (node.owner !== COLORNEUTRAL && node.owner !== 'black' && node.size < MAXNODESIZE && node.poison <= 0) {
-                    node.size=node.size+GROWTHRATE;
+                const maxSize = node.rage ? 3 * MAXNODESIZE : MAXNODESIZE; //Triple max node size if rage node
+                if (node.owner !== COLORNEUTRAL && node.owner !== 'black' && node.size < maxSize && node.poison <= 0) {
+                    node.size = node.size + GROWTHRATE;
                 }
                 if (node.size > GROWTHRATE+1 && node.poison > 0){ //poison subtracts double the growth rate
                     node.size = node.size - GROWTHRATE*2;
                     node.poison = node.poison - 1;
                 }
-
-
                 if (node.poison > 0) { 
                     if (node.size > GROWTHRATE*2){
                         node.size = node.size - GROWTHRATE * 2; //poison subtracts double the growth rate
@@ -457,6 +458,29 @@ io.on('connection', (socket) => {
             } else {
                 console.log('Poison activation failed: Node owned by player or does not exist');
                 socket.emit('errormsg', { message: 'Poison activation failed: Node owned by you or does not exist' });
+            }
+        }
+    });
+
+    socket.on('rage', ({ roomId, nodeId }) => {
+        console.log('Rage activated on node: ' + nodeId);
+        const room = gameRooms[roomId];
+        if (room) {
+            const player = room.players[socket.id];
+            const node = room.gameState.nodes.find(node => node.id === nodeId);
+            if (node && node.owner === player.color) { // Node owned by player
+                if (room.gameState.money[player.id - 1] >= RAGE_COST) {
+                    room.gameState.money[player.id - 1] -= RAGE_COST;
+                    node.rage = true;
+                    io.to(roomId).emit('graphData', room.gameState);
+                    console.log('Rage successfully activated on node ' + nodeId);
+                } else {
+                    console.log('Rage activation failed: Insufficient funds');
+                    socket.emit('errormsg', { message: 'Insufficient funds. Cost: ' + RAGE_COST });
+                }
+            } else {
+                console.log('Rage activation failed: Node not owned by player or does not exist');
+                socket.emit('errormsg', { message: 'Rage activation failed: Node owned by you or does not exist' });
             }
         }
     });

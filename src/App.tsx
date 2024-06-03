@@ -9,6 +9,7 @@ const HEIGHT = 900;
 
 //sound effect
 const blopSound = new Audio('/blop.mp3');
+const errorSound = new Audio('/error.mp3');
 
 var texture = new Image();
 texture.src = 'texture.png';
@@ -20,6 +21,7 @@ interface Node {
   size: number;
   owner: string;
   moneynode: boolean;
+  rage: boolean;
   poison: number;
 }
 
@@ -134,6 +136,7 @@ function App() {
     });
     socket.on('errormsg', (data) => {
       toast.error(data.message); // Use toast for error message
+      errorSound.play();
       console.log(data.message);
     });
 
@@ -162,6 +165,7 @@ function App() {
   const [isTwoWayBridgeMode, setIsTwoWayBridgeMode] = useState(false);
   const [isPoisonMode, setIsPoisonMode] = useState(false);
   const [isCannonMode, setIsCannonMode] = useState(false);
+  const [isRageMode, setIsRageMode] = useState(false);
 
   useEffect(() => { //Main drawing canvas useEffect
     const canvas = canvasRef.current;
@@ -201,6 +205,13 @@ function App() {
           ctx.strokeStyle = 'orange';
           ctx.stroke();
         }
+        if (node.rage) {
+          ctx.fillStyle = 'red';
+          ctx.beginPath();
+          ctx.arc(node.x, node.y, 3, 0, 2 * Math.PI, false); // Perhaps adjust radius
+          ctx.fill();
+        }
+
         ctx.lineWidth = 1;// Reset lineWidth back to 1
 
         // Reset globalAlpha back to 1 to stop affecting other drawings with the transparency
@@ -368,9 +379,33 @@ function App() {
           }
           break;
         case 'h':
-          console.log('Rage Mode Pressed');
+          console.log('Rage Mode Toggled');
           if (selectedAbilities.includes(6)) {
-            socketRef.current?.emit('rage', { roomId });
+            setIsRageMode(current => !current);
+            if (!isRageMode) {
+              setIsBridgeBuildMode(false);
+              setIsBastionMode(false);
+            }
+          }
+          break;
+        case 'h':
+          console.log('Two Way Bridge Mode Toggled');
+          if (selectedAbilities.includes(7)) {
+            setIsPoisonMode(current => !current);
+            if (!isTwoWayBridgeMode) {
+              setIsBridgeBuildMode(false);
+              setIsBastionMode(false);
+            }
+          }
+          break;
+        case 'h':
+          console.log('Cannon Mode Toggled');
+          if (selectedAbilities.includes(8)) {
+            setIsCannonMode(current => !current);
+            if (!isCannonMode) {
+              setIsBridgeBuildMode(false);
+              setIsBastionMode(false);
+            }
           }
           break;
         case 'f':
@@ -452,6 +487,16 @@ function App() {
           console.log('Node Clicked with Nuke')
           socketRef.current?.emit('nuke', { roomId, nodeId: clickedNode.id });
           setIsNukeMode(false);
+          return;
+        } else if (isRageMode) {
+          console.log('Node Clicked with Rage')
+          socketRef.current?.emit('rage', { roomId, nodeId: clickedNode.id });
+          setIsRageMode(false);
+          return;
+        } else if (isCannonMode) {
+          console.log('Node Clicked with Cannon')
+          socketRef.current?.emit('cannon', { roomId, nodeId: clickedNode.id });
+          setIsCannonMode(false);
           return;
         } else if (isPoisonMode) {
           console.log('Node Clicked with Poison')
