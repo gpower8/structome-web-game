@@ -40,6 +40,7 @@ const NODECOST = 10;
 const POISON_COST = 60;
 const FREEZE_COST = 10;
 const RAGE_COST = 15;
+TWOWAY_BRIDGECOST = 15;
 
 const POISON_DURATION = 160;
 
@@ -556,6 +557,34 @@ io.on('connection', (socket) => {
             } else {
                 console.log('Edge build request failed due to ownership or insufficient funds');
                 socket.emit('errormsg', { message: 'Node ownership issue or Insufficient funds. Cost: ' + BRIDGECOST });
+            }
+        }
+    });
+
+    socket.on('buildTwoWayEdge', ({ roomId, from, to }) => {
+        const room = gameRooms[roomId];
+        if (room) {
+            const player = room.players[socket.id];
+            const fromNode = room.gameState.nodes.find(node => node.id === from);
+            const toNode = room.gameState.nodes.find(node => node.id === to);
+
+            // Check if the 'from' node is owned by the player and the player has enough money
+            if (fromNode && toNode && fromNode.owner === player.color && room.gameState.money[player.id - 1] >= TWOWAY_BRIDGECOST) {
+                const newEdge = { from: fromNode.id, to: toNode.id, flowing: false, twoway: true, reversed: false }; //same as other bridge but two way
+
+                // Check if the new edge overlaps with existing edges
+                if (!doesEdgeOverlap(newEdge, room.gameState.edges, room.gameState.nodes)) {
+                    room.gameState.edges.push(newEdge); // Add the new edge to the game state
+                    room.gameState.money[player.id - 1] -= TWOWAY_BRIDGECOST; // Deduct the cost from the player's money
+                    io.to(roomId).emit('graphData', room.gameState);
+                    console.log('Edge built successfully from node ' + from + ' to node ' + to);
+                } else {
+                    console.log('Edge build request failed due to overlap');
+                    socket.emit('errormsg', { message: 'Cannot build over another bridge' });
+                }
+            } else {
+                console.log('Edge build request failed due to ownership or insufficient funds');
+                socket.emit('errormsg', { message: 'Node ownership issue or Insufficient funds. Cost: ' + TWOWAY_BRIDGECOST });
             }
         }
     });

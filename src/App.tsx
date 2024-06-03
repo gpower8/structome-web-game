@@ -268,7 +268,7 @@ function App() {
               ctx.stroke(); // Apply the thicker stroke to the path (triangle in this context)
               ctx.lineWidth = 1; // Reset lineWidth back to 1 (or your default value) to avoid affecting other drawings
             }
-            if (firstNode && cursorPosition && isBridgeBuildMode) {
+            if (firstNode && cursorPosition && (isBridgeBuildMode || isTwoWayBridgeMode)) {
               // Draw a line from firstNode to cursorPosition
               ctx.beginPath();
               ctx.moveTo(firstNode.x, firstNode.y);
@@ -281,7 +281,7 @@ function App() {
         }
       });
     }
-  }, [graphData, firstNode, cursorPosition, isBridgeBuildMode, isNukeMode, isBastionMode]);
+  }, [graphData, firstNode, cursorPosition, isBridgeBuildMode, isNukeMode, isBastionMode, isTwoWayBridgeMode]);
 
   useEffect(() => { //Right click
     const canvas = canvasRef.current;
@@ -436,7 +436,7 @@ function App() {
     if (!canvas) return;
 
     const handleMouseMove = (event: MouseEvent) => {
-      if (!isBridgeBuildMode || !firstNode) return; // Only track cursor in bridge build mode and after selecting the first node
+      if (!firstNode || (!isBridgeBuildMode && !isTwoWayBridgeMode)) return; // Only track cursor in build mode and after selecting the first node
 
       const rect = canvas.getBoundingClientRect();
       const x = (event.clientX - rect.left) * (canvas.width / rect.width);
@@ -449,7 +449,7 @@ function App() {
     return () => {
       canvas.removeEventListener('mousemove', handleMouseMove);
     };
-  }, [isBridgeBuildMode, firstNode]);
+  }, [isBridgeBuildMode, firstNode, isTwoWayBridgeMode]);
 
   useEffect(() => { //left click
     const canvas = canvasRef.current;
@@ -467,16 +467,20 @@ function App() {
 
       if (clickedNode) {
         blopSound.play();
-        if(isBridgeBuildMode){
-          console.log('node clicked in bridge mode');
+        if(isBridgeBuildMode || isTwoWayBridgeMode){
+          console.log('node clicked in a bridge mode');
           if (!firstNode) {
             setFirstNode(clickedNode); // Set first node if not already set
           } else {
             // Emit edge build request to server with firstNode and clickedNode
-            socketRef.current?.emit('buildEdge', { roomId, from: firstNode.id, to: clickedNode.id });
+            if (isBridgeBuildMode){
+              socketRef.current?.emit('buildEdge', { roomId, from: firstNode.id, to: clickedNode.id }); //build two way or one way based on ability
+            } else if(isTwoWayBridgeMode){
+              socketRef.current?.emit('buildTwoWayEdge', { roomId, from: firstNode.id, to: clickedNode.id });
+            }
             setIsBridgeBuildMode(false); // Exit bridge build mode
             setFirstNode(null); // Reset first node selection
-            console.log('processing click'+isBridgeBuildMode);
+            console.log('processing bridge click');
           }
         } else if (isBastionMode) {
           console.log('Node Clicked with Bastion')
@@ -548,7 +552,7 @@ function App() {
     return () => {
       canvas.removeEventListener('click', handleCanvasClick);
     };
-  }, [graphData, roomId, isBridgeBuildMode, isNukeMode, isBastionMode]); // Re-run when graphData or roomId changes
+  }, [graphData, roomId, isBridgeBuildMode, isNukeMode, isBastionMode, isTwoWayBridgeMode]); // Re-run when graphData or roomId changes
 
   return (
     <div className="App" style={{
