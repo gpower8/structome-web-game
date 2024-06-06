@@ -188,7 +188,7 @@ function App() {
 
         // Draw the texture scaled to the node size behind the node
         // Adjust the x, y, width, and height values to position and scale the texture as needed
-        var textureSize = Math.sqrt(node.size/1.6 + 70);
+        var textureSize = Math.sqrt(node.size/1.6 + 5)+4;
         ctx.drawImage(texture, node.x - textureSize*1.15, node.y - textureSize*1.15, textureSize * 2.3, textureSize * 2.3);
 
         // Draw the node
