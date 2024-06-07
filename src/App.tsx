@@ -650,6 +650,8 @@ function App() {
                 <img src="/rage.png" alt="Rage Icon" className={`game-icon ${isRageMode ? 'active-icon' : ''}`} />}
               {selectedAbilities.includes(7) &&
                 <img src="/twoway.png" alt="Two-Way Bridge Icon" className={`game-icon ${isTwoWayBridgeMode ? 'active-icon' : ''}`} />}
+              {selectedAbilities.includes(8) &&
+                <img src="/cannon.png" alt="Cannon Icon" className={`game-icon ${isCannonMode ? 'active-icon' : ''}`} />}
             </div>
             <button className="room-id-button" onClick={() => navigator.clipboard.writeText(roomId)}>
               Room ID: {roomId}
