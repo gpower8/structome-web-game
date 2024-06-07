@@ -196,7 +196,7 @@ function App() {
         if (!node.cannon){
           ctx.drawImage(texture, node.x - textureSize * 1.15, node.y - textureSize * 1.15, textureSize * 2.3, textureSize * 2.3);
         } else {
-          ctx.drawImage(cannonTexture, node.x - textureSize * 1.15, node.y - textureSize * 1.15, textureSize * 4.3, textureSize * 4.3);
+          ctx.drawImage(cannonTexture, node.x - textureSize * 1.15, node.y - textureSize * 1.15, textureSize * 2.3, textureSize * 2.3);
         }
         
 

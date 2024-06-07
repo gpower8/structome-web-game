@@ -592,7 +592,6 @@ io.on('connection', (socket) => {
             const player = room.players[socket.id];
             const fromNode = room.gameState.nodes.find(node => node.id === from);
             const toNode = room.gameState.nodes.find(node => node.id === to);
-
             // Check if the 'from' node is owned by the player, has a cannon, and is large enough
             if (fromNode && toNode && fromNode.owner === player.color && fromNode.cannon && fromNode.size >= MAXNODESIZE && toNode.owner !== player.color) {
                 const newEdge = { from: fromNode.id, to: toNode.id, flowing: false, twoway: true, reversed: false };
@@ -602,7 +601,7 @@ io.on('connection', (socket) => {
                     toNode.size = fromNode.size;
                     fromNode.size = 1;
                     console.log(`Cannon attack successful from node ${from} to node ${to}`);
-                    io.to(roomId).emit('graphData', room.gameNoose);
+                    io.to(roomId).emit('graphData', room.gameState);
                 } else {
                     console.log('Cannon attack failed: path is blocked by existing edges');
                     socket.emit('errormsg', { message: `Cannon can't shoot through bridges`});
