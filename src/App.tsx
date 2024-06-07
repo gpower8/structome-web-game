@@ -10,6 +10,7 @@ const HEIGHT = 900;
 //sound effect
 const blopSound = new Audio('/blop.mp3');
 const errorSound = new Audio('/error.mp3');
+const cannonSound = new Audio('/cannon-fire.mp3');
 
 var texture = new Image();
 texture.src = 'texture.png';
@@ -142,6 +143,12 @@ function App() {
       errorSound.play();
       console.log(data.message);
     });
+    socket.on('event', (data) => {
+      if(data.message == 'cannonAttack'){
+        cannonSound.play(); //Play cannon sound
+      }
+      console.log(data.message);
+    });
 
     return () => {
       socket.disconnect();
@@ -196,7 +203,9 @@ function App() {
         if (!node.cannon){
           ctx.drawImage(texture, node.x - textureSize * 1.15, node.y - textureSize * 1.15, textureSize * 2.3, textureSize * 2.3);
         } else {
+          ctx.globalAlpha = 0.8;
           ctx.drawImage(cannonTexture, node.x - textureSize * 1.15, node.y - textureSize * 1.15, textureSize * 2.3, textureSize * 2.3);
+          ctx.globalAlpha = 0.5;
         }
         
 
@@ -215,7 +224,7 @@ function App() {
           ctx.stroke();
         }
         if (node.rage) {
-          ctx.fillStyle = 'red';
+          ctx.fillStyle = 'magenta';
           ctx.beginPath();
           ctx.arc(node.x, node.y, 3, 0, 2 * Math.PI, false); // Perhaps adjust radius
           ctx.fill();
