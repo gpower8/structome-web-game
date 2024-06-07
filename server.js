@@ -41,6 +41,7 @@ const POISON_COST = 60;
 const FREEZE_COST = 10;
 const RAGE_COST = 15;
 const TWOWAY_BRIDGECOST = 15;
+const CANNON_COST = 100;
 
 const POISON_DURATION = 160;
 
@@ -69,6 +70,7 @@ function generateRandomGraph() {
                 owner: COLORNEUTRAL,
                 moneynode: false,
                 rage: false,
+                cannon: false,
                 poison: 0
             };
         } while (nodes.some(node => getDistance(newNode, node) < minDistance)); //choose most central node without edges
@@ -488,6 +490,29 @@ io.on('connection', (socket) => {
         }
     });
 
+    socket.on('cannon', ({ roomId, nodeId }) => {
+        console.log('Cannon activated on node: ' + nodeId);
+        const room = gameRooms[roomId];
+        if (room) {
+            const player = room.players[socket.id];
+            const node = room.gameState.nodes.find(node => node.id === nodeId);
+            if (node && node.owner === player.color) { // Node owned by player
+                if (room.gameState.money[player.id - 1] >= CANNON_COST) {
+                    room.gameState.money[player.id - 1] -= CANNON_COST;
+                    node.cannon = true;
+                    io.to(roomId).emit('graphData', room.gameState);
+                    console.log('Cannon successfully activated on node ' + nodeId);
+                } else {
+                    console.log('Cannon activation failed: Insufficient funds');
+                    socket.emit('errormsg', { message: 'Insufficient funds. Cost: ' + CANNON_COST });
+                }
+            } else {
+                console.log('Cannon activation failed: Node not owned by player or does not exist');
+                socket.emit('errormsg', { message: 'Cannon activation failed: Node owned by you or does not exist' });
+            }
+        }
+    });
+
     socket.on('updateEdgeFlowing', ({ roomId, edgeId, flowing }) => {
         console.log('edge left clicked on: '+edgeId);
         const room = gameRooms[roomId];
@@ -557,6 +582,34 @@ io.on('connection', (socket) => {
             } else {
                 console.log('Edge build request failed due to ownership or insufficient funds');
                 socket.emit('errormsg', { message: 'Node ownership issue or Insufficient funds. Cost: ' + BRIDGECOST });
+            }
+        }
+    });
+
+    socket.on('cannonAttack', ({ roomId, from, to }) => {
+        const room = gameRooms[roomId];
+        if (room) {
+            const player = room.players[socket.id];
+            const fromNode = room.gameState.nodes.find(node => node.id === from);
+            const toNode = room.gameState.nodes.find(node => node.id === to);
+
+            // Check if the 'from' node is owned by the player, has a cannon, and is large enough
+            if (fromNode && toNode && fromNode.owner === player.color && fromNode.cannon && fromNode.size >= MAXNODESIZE && toNode.owner !== player.color) {
+                const newEdge = { from: fromNode.id, to: toNode.id, flowing: false, twoway: true, reversed: false };
+                if (!doesEdgeOverlap(newEdge, room.gameState.edges, room.gameState.nodes)) {
+                    // Perform cannon attack logic here (e.g., reduce health of 'to' node)
+                    toNode.owner = player.color;
+                    toNode.size = fromNode.size;
+                    fromNode.size = 1;
+                    console.log(`Cannon attack successful from node ${from} to node ${to}`);
+                    io.to(roomId).emit('graphData', room.gameNoose);
+                } else {
+                    console.log('Cannon attack failed: path is blocked by existing edges');
+                    socket.emit('errormsg', { message: `Cannon can't shoot through bridges`});
+                }
+            } else {
+                console.log('Cannon attack request failed due to node ownership, lack of cannon, node size, or target ownership');
+                socket.emit('errormsg', { message: 'Cannon not above max node size or node ownership problem' });
             }
         }
     });

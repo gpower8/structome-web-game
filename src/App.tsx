@@ -13,6 +13,8 @@ const errorSound = new Audio('/error.mp3');
 
 var texture = new Image();
 texture.src = 'texture.png';
+var cannonTexture = new Image();
+cannonTexture.src = 'cannonTexture.webp';
 
 interface Node {
   id: number;
@@ -22,6 +24,7 @@ interface Node {
   owner: string;
   moneynode: boolean;
   rage: boolean;
+  cannon: boolean;
   poison: number;
 }
 
@@ -190,7 +193,12 @@ function App() {
         // Adjust the x, y, width, and height values to position and scale the texture as needed
         var textureSize = Math.sqrt(node.size/1.6 + 20
         );
-        ctx.drawImage(texture, node.x - textureSize*1.15, node.y - textureSize*1.15, textureSize * 2.3, textureSize * 2.3);
+        if (!node.cannon){
+          ctx.drawImage(texture, node.x - textureSize * 1.15, node.y - textureSize * 1.15, textureSize * 2.3, textureSize * 2.3);
+        } else {
+          ctx.drawImage(cannonTexture, node.x - textureSize * 1.15, node.y - textureSize * 1.15, textureSize * 4.3, textureSize * 4.3);
+        }
+        
 
         // Draw the node
         ctx.beginPath();
@@ -411,6 +419,7 @@ function App() {
           console.log('Two Way Bridge Mode Toggled');
           if (selectedAbilities.includes(7)) {
             setIsTwoWayBridgeMode(current => !current);
+            setFirstNode(null); // Reset first node selection
             if (!isTwoWayBridgeMode) {
               resetModes();
               setIsTwoWayBridgeMode(true);
@@ -508,8 +517,16 @@ function App() {
           return;
         } else if (isCannonMode) {
           console.log('Node Clicked with Cannon')
-          socketRef.current?.emit('cannon', { roomId, nodeId: clickedNode.id });
-          setIsCannonMode(false);
+          if (!firstNode && clickedNode.cannon === false){
+            socketRef.current?.emit('cannon', { roomId, nodeId: clickedNode.id });
+            setIsCannonMode(false);
+          } else if (!firstNode && clickedNode.cannon === true) {
+            setFirstNode(clickedNode);
+          } else if (firstNode) {
+            socketRef.current?.emit('cannonAttack', { roomId, from: firstNode.id, to: clickedNode.id });
+            setIsBridgeBuildMode(false);
+            setFirstNode(null);
+          }
           return;
         } else if (isPoisonMode) {
           console.log('Node Clicked with Poison')
