@@ -601,6 +601,7 @@ io.on('connection', (socket) => {
                     toNode.size = fromNode.size;
                     fromNode.size = 1;
                     console.log(`Cannon attack successful from node ${from} to node ${to}`);
+                    io.to(roomId).emit('event', { message: 'cannonAttack' });
                     io.to(roomId).emit('graphData', room.gameState);
                 } else {
                     console.log('Cannon attack failed: path is blocked by existing edges');
