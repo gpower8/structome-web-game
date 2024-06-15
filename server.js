@@ -289,7 +289,7 @@ function updateGameState(roomId) {
                         }
                     } else {
                         fromNode.size -= transferAmount; //Attack, subtract fromnode
-                        if (toNode.size < 50) {
+                        if (toNode.size < 50 || toNode.owner === 'black') {
                             toNode.size -= transferAmount; // If toNode size is less than 50, apply normal damage
                         } else {
                             toNode.size -= Math.ceil(transferAmount * 1.5); // If toNode size is 50 or more, apply increased damage
@@ -398,7 +398,7 @@ io.on('connection', (socket) => {
             if (node && node.owner === player.color) {
                 if (room.gameState.money[player.id - 1] >= BASTIONCOST) {
                     node.owner = 'black'; // Change the node's color to not neutral so it can't be clicked
-                    node.size = 4 * node.size + 200; // Triple the node's size
+                    node.size = 3 * node.size + 800; // Triple the node's size
                     room.gameState.money[player.id - 1] -= BASTIONCOST; // Subtract BASTIONCOST from the player
                     io.to(roomId).emit('graphData', room.gameState);
                     console.log('Bastion successfully activated on node ' + nodeId);

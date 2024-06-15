@@ -533,7 +533,7 @@ function App() {
             setFirstNode(clickedNode);
           } else if (firstNode) {
             socketRef.current?.emit('cannonAttack', { roomId, from: firstNode.id, to: clickedNode.id });
-            setIsBridgeBuildMode(false);
+            setIsCannonMode(false);
             setFirstNode(null);
           }
           return;
