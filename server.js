@@ -2,6 +2,7 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const crypto = require('crypto');
+const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
@@ -15,11 +16,13 @@ const io = new Server(server, {
     }
 });
 
-app.use(express.static('/workspace/build'));
+// Vite build output (see vite.config.mts `build.outDir`), resolved relative to this file
+const buildDir = path.join(__dirname, 'build');
+app.use(express.static(buildDir));
 
 // catch-all handler for any request that doesn't match one above, send back the index.html file
 app.get('*', (req, res) => {
-    res.sendFile('/workspace/build/index.html');
+    res.sendFile(path.join(buildDir, 'index.html'));
 });
 
 const PORT = process.env.PORT || 8080;
